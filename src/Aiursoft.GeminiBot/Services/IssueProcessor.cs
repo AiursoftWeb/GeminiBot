@@ -19,6 +19,7 @@ public class IssueProcessor
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
     private readonly CommandService _commandService;
+    private readonly LocalizationService _localizationService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<IssueProcessor> _logger;
 
@@ -26,12 +27,14 @@ public class IssueProcessor
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
         CommandService commandService,
+        LocalizationService localizationService,
         IOptions<GeminiBotOptions> options,
         ILogger<IssueProcessor> logger)
     {
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
         _commandService = commandService;
+        _localizationService = localizationService;
         _options = options.Value;
         _logger = logger;
     }
@@ -80,6 +83,10 @@ public class IssueProcessor
 
             // Gemini CLI may take a while to finish.
             await Task.Delay(1000);
+
+            // Run localization if enabled
+            _logger.LogInformation("Checking for localization requirements...");
+            await _localizationService.LocalizeProjectAsync(workPath);
 
             // Check for changes
             if (!await _workspaceManager.PendingCommit(workPath))

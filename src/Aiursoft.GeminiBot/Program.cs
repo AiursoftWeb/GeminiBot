@@ -10,6 +10,7 @@ using Aiursoft.NugetNinja.GitServerBase.Services.Providers.GitHub;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers.GitLab;
 using Aiursoft.CSTools.Services;
 using Aiursoft.NugetNinja.GitServerBase.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -53,5 +54,21 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddTransient<IssueProcessor>();
             services.AddTransient<MergeRequestProcessor>();
             services.AddTransient<Entry>();
+
+            // Register localization services
+            services.Configure<Aiursoft.Dotlang.Shared.TranslateOptions>(translateOptions =>
+            {
+                var botOptions = new GeminiBotOptions();
+                context.Configuration.GetSection("GeminiBot").Bind(botOptions);
+                translateOptions.OllamaInstance = botOptions.OllamaApiEndpoint ?? string.Empty;
+                translateOptions.OllamaModel = botOptions.OllamaModel ?? string.Empty;
+                translateOptions.OllamaToken = botOptions.OllamaApiKey ?? string.Empty;
+            });
+            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.DataAnnotationKeyExtractor>();
+            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.CSharpKeyExtractor>();
+            services.AddTransient<Aiursoft.Canon.CanonPool>();
+            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.CshtmlLocalizer>();
+            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.TranslateEntry>();
+            services.AddTransient<LocalizationService>();
         });
 }
