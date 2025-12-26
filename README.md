@@ -3,8 +3,7 @@
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.aiursoft.com/aiursoft/geminibot/-/blob/master/LICENSE)
 [![Pipeline stat](https://gitlab.aiursoft.com/aiursoft/geminibot/badges/master/pipeline.svg)](https://gitlab.aiursoft.com/aiursoft/geminibot/-/pipelines)
 [![Test Coverage](https://gitlab.aiursoft.com/aiursoft/geminibot/badges/master/coverage.svg)](https://gitlab.aiursoft.com/aiursoft/geminibot/-/pipelines)
-[![NuGet version (Aiursoft.geminibot)](https://img.shields.io/nuget/v/Aiursoft.geminibot.svg)](https://www.nuget.org/packages/Aiursoft.geminibot/)
-[![NuGet version (Aiursoft.geminibot.PrBot)](https://img.shields.io/nuget/v/Aiursoft.geminibot.PrBot.svg)](https://www.nuget.org/packages/Aiursoft.geminibot.PrBot/)
+[![NuGet version (aiursoft.geminibot)](https://img.shields.io/nuget/v/Aiursoft.geminibot.svg)](https://www.nuget.org/packages/Aiursoft.geminibot/)
 [![Man hours](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.svg)](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.html)
 
 Nuget Ninja is a tool for detecting dependencies of .NET projects. It analyzes the dependency structure of .NET projects in a directory and builds a directed acyclic graph. And will give some modification suggestions for Nuget packages, so that the dependencies of the project are as concise and up-to-date as possible.
@@ -23,103 +22,60 @@ dotnet tool install --global Aiursoft.GeminiBot
 
 ## Usage
 
-After getting the binary, run it directly in the terminal.
-
-```cmd
-C:\workspace> ninja.exe
-
-Description:
-  A tool for detecting dependencies of .NET projects.
-
-Usage:
-  ninja [command] [options]
-
-Options:
-  -p, --path <path> (REQUIRED)                     Path of the projects to be changed.
-  -d, --dry-run                                    Preview changes without actually making them
-  -v, --verbose                                    Show detailed log
-  --allow-preview                                  Allow using preview versions of packages from Nuget.
-  --nuget-server <nuget-server>                    If you want to use a customized nuget server instead of the official nuget.org, you can set it with a value like: https://nuget.myserver/v3/index.json
-  --token <token>                                  The PAT token which has privilege to access the nuget server. See: 
-                                                   https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate
-  --allow-package-version-cross-microsoft-runtime  Allow using NuGet package versions for different Microsoft runtime versions. For example, when using runtime 6.0, it will avoid upgrading packages to 7.0.
-  --version                                        Show version information
-  -?, -h, --help                                   Show help and usage information
-
-Commands:
-  all, all-officials  The command to run all officially supported features.
-  fill-properties     The command to fill all missing properties for .csproj files.
-  remove-deprecated   The command to replace all deprecated packages to new packages.
-  upgrade-pkg         The command to upgrade all package references to possible latest and avoid conflicts.
-  clean-pkg           The command to clean up possible useless package references.
-  clean-prj           The command to clean up possible useless project references.
-  visualize           The command to visualize the dependency relationship, with mermaid markdown.
-  expect-files        The command to search for all expected files and add patch the content.
+After getting the binary, setup your GitLab and Gemini API KEY:
 
 ```
-
-### Config file
-
-Beyond managing NuGet packages, geminibot can also enforce repository structure by ensuring common files (like `.gitignore`, `LICENSE`, or `.editorconfig`) are present and up-to-date.
-
-This feature is configured by placing a `ninja.yaml` file in the root of your repository.
-
-This YAML file defines a list of files you expect to be in your repository. For each file, you must specify its `name` and can optionally provide a `contentUri` pointing to the raw content that file should have.
-
-Here is a sample `ninja.yaml`:
-
-```yaml
-configVersion: 1
-files:
-  - name: .editorconfig
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/.editorconfig
-  - name: .gitignore
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/.gitignore
-  - name: .gitlab-ci.yml
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/.gitlab-ci.yml
-  - name: LICENSE
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/LICENSE
-  - name: CODE_OF_CONDUCT.md
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/CODE_OF_CONDUCT.md
-  - name: ninja.yaml
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/ninja.yaml
-  - name: nuget.config
-    contentUri: https://gitlab.aiursoft.com/aiursoft/tracer/-/raw/master/nuget.config
-  - name: README.md
+cat ./appsettings.json
+{
+  "Servers": [
+    {
+      "Provider": "GitLab",
+      "EndPoint": "https://gitlab.aiursoft.com",
+      "PushEndPoint": "https://{0}@gitlab.aiursoft.com",
+      "DisplayName": "Gemini Bot",
+      "UserName": "gemini-bot",
+      "UserEmail": "gemini@aiursoft.com",
+      "ContributionBranch": "users/gemini/auto-fix-issue",
+      "Token": "",
+      "OnlyUpdate": false
+    }
+  ],
+  "GeminiBot": {
+    "WorkspaceFolder": "/tmp/NugetNinjaWorkspace",
+    "GeminiTimeout": "00:20:00",
+    "ForkWaitDelayMs": 5000,
+    "Model": "gemini-3-pro-preview",
+    "GeminiApiKey": ""
+  }
+}
 ```
 
-When you run the `expect-files` command, geminibot will read this configuration and perform the following actions:
+Make sure to fill in the `Token` and `GeminiApiKey` fields with your actual GitLab personal access token and Gemini API key, respectively.
 
-1.  **Create Missing Files:** If a file specified in `files` (e.g., `LICENSE`) does not exist in your project's root directory, geminibot will create it.
-
-      * If a `contentUri` is provided, the tool will download the content from that URL and write it to the new file.
-      * If no `contentUri` is provided, an empty file will be created.
-
-2.  **Patch Existing Files:** If a file already exists, geminibot will compare its content with the content at the specified `contentUri`.
-
-      * If the contents do not match, the local file will be **overwritten** (patched) with the content from the URL.
-      * If the contents match, no action is taken.
-
-3.  **Correct File Casing:** The tool performs a case-insensitive search for the file. If it finds a file with a matching name but different casing (e.g., your repo has `license` but the YAML specifies `LICENSE`), it will rename the file to match the exact casing in the `name` property.
-
-### Sample
-
-Generate suggestions for the current workspace without modifying local files:
+run it directly in the terminal.
 
 ```cmd
-C:\workspace> ninja.exe all --path . --dry-run
-```
+C:\workspace> gemini-bot
 
-Fill missing properties for current workspace:
-
-```cmd
-C:\workspace> ninja.exe fill-properties --path .
-```
-
-Run all plugins under the current folder:
-
-```cmd
-C:\workspace> ninja.exe all --path .
+16:28 info: Aiursoft.GeminiBot.Entry[0] Starting Gemini Bot for issue processing...
+16:28 info: Aiursoft.GeminiBot.Entry[0] Processing server: GitLab...
+16:28 info: Aiursoft.GeminiBot.Entry[0]   ================ CHECKING MERGE REQUESTS ================ 
+16:28 info: Aiursoft.GeminiBot.Entry[0] Checking merge requests before processing issues...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Checking merge requests submitted by gemini-bot...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Checking MR #33: Fix for issue #8: 砍掉PublicId。设计的不好。...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] MR #33 pipeline is success, no action needed
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Checking MR #2: Fix for issue #1: UDP测试，只要连续10个包都丢了，且一个包都没收到，立刻停止测试，给0分。不需要浪费时间了。...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] MR #2 pipeline is success, no action needed
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Checking MR #32: Fix for issue #9: 文档的分享功能非常confusing....
+16:28 warn: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] MR #32 has pipeline with status: failed
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Found 1 failed merge requests to fix
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Processing failed MR #32: Fix for issue #9: 文档的分享功能非常confusing.
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] MR #32: Using project ID 375 for pipeline operations (source: 375, target: 341)
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Getting repository details from source project 375...
+16:28 info: Aiursoft.NugetNinja.GitServerBase.Services.Providers.GitLab.GitLabService[0] Getting repository details for 375/ in GitLab...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Fetching jobs for pipeline 40179 in project 375...
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Found 1 failed jobs in pipeline 40179
+16:28 info: Aiursoft.GeminiBot.Services.MergeRequestProcessor[0] Downloading log for failed job: lint (ID: 230579)
 ```
 
 ## Run locally
