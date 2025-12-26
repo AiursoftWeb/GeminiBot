@@ -17,6 +17,7 @@ namespace Aiursoft.GeminiBot.Services;
 /// </summary>
 public class MergeRequestProcessor
 {
+    private readonly LocalizationService _localizationService;
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
     private readonly CommandService _commandService;
@@ -24,12 +25,14 @@ public class MergeRequestProcessor
     private readonly ILogger<MergeRequestProcessor> _logger;
 
     public MergeRequestProcessor(
+        LocalizationService localizationService,
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
         CommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<MergeRequestProcessor> logger)
     {
+        _localizationService = localizationService;
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
         _commandService = commandService;
@@ -171,9 +174,13 @@ public class MergeRequestProcessor
             _logger.LogInformation("Invoking Gemini CLI to fix MR #{IID}...", mr.IID);
 
             var geminiSuccess = await InvokeGeminiCliAsync(workPath, prompt);
+
+            // Run localization if enabled
+            _logger.LogInformation("Checking for localization requirements...");
+            await _localizationService.LocalizeProjectAsync(workPath);
             if (!geminiSuccess)
             {
-                _logger.LogError("Gemini CLI failed to process MR #{IID}", mr.IID);
+                _logger.LogWarning("Gemini CLI failed to process MR #{IID}. But continue to proceed possible localization updates.", mr.IID);
                 return;
             }
 

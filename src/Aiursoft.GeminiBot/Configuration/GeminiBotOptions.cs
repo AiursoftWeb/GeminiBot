@@ -61,5 +61,5 @@ public class GeminiBotOptions
     /// <summary>
     /// Target languages for localization (e.g., ["zh-CN", "en-US", "ja-JP"]).
     /// </summary>
-    public string[] LocalizationTargetLanguages { get; set; } = ["zh-CN", "en-US", "ja-JP"];
+    public string[] LocalizationTargetLanguages { get; set; } = [];
 }

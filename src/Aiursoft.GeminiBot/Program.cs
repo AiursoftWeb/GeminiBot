@@ -1,5 +1,7 @@
-﻿using Aiursoft.GeminiBot;
+﻿using Aiursoft.Canon;
+using Aiursoft.GeminiBot;
 using Aiursoft.GitRunner;
+using Aiursoft.GptClient;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Services;
 using Aiursoft.NugetNinja.GitServerBase.Models;
@@ -64,10 +66,15 @@ static IHostBuilder CreateHostBuilder(string[] args)
                 translateOptions.OllamaModel = botOptions.OllamaModel ?? string.Empty;
                 translateOptions.OllamaToken = botOptions.OllamaApiKey ?? string.Empty;
             });
-            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.DataAnnotationKeyExtractor>();
-            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.CSharpKeyExtractor>();
-            services.AddTransient<Aiursoft.Canon.CanonPool>();
-            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.CshtmlLocalizer>();
+
+            // Register all required services from Aiursoft.Dotlang.AspNetTranslate
+            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.DataAnnotationKeyExtractor>();
+            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.CshtmlLocalizer>();
+            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.CSharpKeyExtractor>();
+            services.AddTaskCanon();
+            services.AddScoped<Aiursoft.Dotlang.Shared.OllamaBasedTranslatorEngine>();
+            services.AddScoped<Aiursoft.Dotlang.Shared.CachedTranslateEngine>();
+            services.AddGptClient();
             services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.TranslateEntry>();
             services.AddTransient<LocalizationService>();
         });

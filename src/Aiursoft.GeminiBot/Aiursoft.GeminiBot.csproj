@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>10.0.12</Version>
+    <Version>10.0.13</Version>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>gemini-bot</AssemblyName>
     <RootNamespace>Aiursoft.GeminiBot</RootNamespace>
@@ -40,13 +40,15 @@
     </Content>
     <None Include="../../README.md" Pack="true" PackagePath="." />
   </ItemGroup>
+    <ItemGroup>
+        <None Update="Assets\Template.xml">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Aiursoft.Dotlang.AspNetTranslate" Version="10.0.2" />
     <PackageReference Include="Aiursoft.NugetNinja.GitServerBase" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
-  </ItemGroup>
-  <ItemGroup>
-
   </ItemGroup>
 </Project>
