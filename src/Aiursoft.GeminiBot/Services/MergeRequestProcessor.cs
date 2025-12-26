@@ -87,7 +87,7 @@ public class MergeRequestProcessor
                 else
                 {
                     // Pipeline is success or null. Check for human comments.
-                    if (await ShouldProcessDueToReviewAsync(server, mr, details))
+                    if (await ShouldProcessDueToReviewAsync(server, mr))
                     {
                         _logger.LogWarning("MR #{IID} has human comments after the last bot commit. Processing...", mr.IID);
                         failedMRs.Add((mr, details));
@@ -203,7 +203,7 @@ public class MergeRequestProcessor
             }
             else
             {
-                prompt = BuildReviewPrompt(mr, details, reviewNotes);
+                prompt = BuildReviewPrompt(mr, reviewNotes);
                 commitMessage = $"Address human review for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
             }
 
@@ -283,7 +283,7 @@ public class MergeRequestProcessor
 
             _logger.LogInformation("Found {Count} failed jobs in pipeline {PipelineId}", failedJobs.Count, pipelineId);
 
-            var allLogs = new System.Text.StringBuilder();
+            var allLogs = new StringBuilder();
 
             foreach (var job in failedJobs)
             {
@@ -341,7 +341,6 @@ Please analyze the failure logs, identify the root cause, and make the necessary
     /// </summary>
     private string BuildReviewPrompt(
         MergeRequestSearchResult mr,
-        DetailedMergeRequest details,
         string reviewNotes)
     {
         return $@"We are working on escroting the merge request #{mr.IID}: {mr.Title}
@@ -454,7 +453,7 @@ Please analyze the feedback, identify the requested changes, and make the necess
         return Path.Combine(_options.WorkspaceFolder, $"{mr.ProjectId}-{repoName}-mr-{mr.IID}");
     }
 
-    private async Task<bool> ShouldProcessDueToReviewAsync(Server server, MergeRequestSearchResult mr, DetailedMergeRequest details)
+    private async Task<bool> ShouldProcessDueToReviewAsync(Server server, MergeRequestSearchResult mr)
     {
         if (server.Provider != "GitLab")
         {
@@ -539,7 +538,7 @@ Please analyze the feedback, identify the requested changes, and make the necess
 
     private class GitLabDiscussion
     {
-        public List<GitLabNote> Notes { get; set; } = new();
+        public IEnumerable<GitLabNote> Notes { get; set; } = [];
     }
 
     private class GitLabNote
