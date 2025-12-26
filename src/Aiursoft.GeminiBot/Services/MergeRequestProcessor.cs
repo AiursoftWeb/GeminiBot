@@ -181,7 +181,6 @@ public class MergeRequestProcessor
             if (!geminiSuccess)
             {
                 _logger.LogWarning("Gemini CLI failed to process MR #{IID}. But continue to proceed possible localization updates.", mr.IID);
-                return;
             }
 
             // Wait for Gemini to finish
