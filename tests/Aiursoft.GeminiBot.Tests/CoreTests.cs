@@ -1,6 +1,5 @@
 using Aiursoft.GeminiBot.Models;
 using Aiursoft.GeminiBot.Configuration;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aiursoft.GeminiBot.Tests;
 
