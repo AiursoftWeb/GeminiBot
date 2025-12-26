@@ -1,4 +1,4 @@
-namespace Aiursoft.NugetNinja.GeminiBot.Configuration;
+namespace Aiursoft.GeminiBot.Configuration;
 
 /// <summary>
 /// Configuration options for the Gemini Bot.

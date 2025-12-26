@@ -1,14 +1,14 @@
 using Aiursoft.CSTools.Services;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
-using Aiursoft.NugetNinja.GeminiBot.Configuration;
-using Aiursoft.NugetNinja.GeminiBot.Models;
+using Aiursoft.GeminiBot.Configuration;
+using Aiursoft.GeminiBot.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Aiursoft.NugetNinja.GeminiBot.Services;
+namespace Aiursoft.GeminiBot.Services;
 
 /// <summary>
 /// Encapsulates the business logic for processing GitLab issues.

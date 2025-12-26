@@ -1,7 +1,7 @@
-﻿using Aiursoft.NugetNinja.GeminiBot;
+﻿using Aiursoft.GeminiBot;
 using Aiursoft.GitRunner;
-using Aiursoft.NugetNinja.GeminiBot.Configuration;
-using Aiursoft.NugetNinja.GeminiBot.Services;
+using Aiursoft.GeminiBot.Configuration;
+using Aiursoft.GeminiBot.Services;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers.AzureDevOps;

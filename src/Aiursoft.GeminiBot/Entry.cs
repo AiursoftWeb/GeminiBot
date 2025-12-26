@@ -1,10 +1,10 @@
-﻿using Aiursoft.NugetNinja.GeminiBot.Services;
+﻿using Aiursoft.GeminiBot.Services;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Aiursoft.NugetNinja.GeminiBot;
+namespace Aiursoft.GeminiBot;
 
 /// <summary>
 /// Application entry point and coordinator.

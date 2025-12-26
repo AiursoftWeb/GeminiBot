@@ -1,14 +1,15 @@
 using Aiursoft.CSTools.Services;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
-using Aiursoft.NugetNinja.GeminiBot.Configuration;
-using Aiursoft.NugetNinja.GeminiBot.Models;
+using Aiursoft.GeminiBot.Configuration;
+using Aiursoft.GeminiBot.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models;
+using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Aiursoft.NugetNinja.GeminiBot.Services;
+namespace Aiursoft.GeminiBot.Services;
 
 /// <summary>
 /// Handles checking and fixing failed merge requests.
@@ -51,7 +52,7 @@ public class MergeRequestProcessor
                 server.UserName,
                 server.Token);
 
-            var failedMRs = new List<(GitServerBase.Models.Abstractions.MergeRequestSearchResult mr, GitServerBase.Models.Abstractions.DetailedMergeRequest details)>();
+            var failedMRs = new List<(MergeRequestSearchResult mr, DetailedMergeRequest details)>();
 
             foreach (var mr in mergeRequests)
             {
@@ -108,8 +109,8 @@ public class MergeRequestProcessor
     /// Check a single MR with failed pipeline, download logs, and invoke Gemini to fix.
     /// </summary>
     private async Task CheckAndFixFailedPipelineAsync(
-        GitServerBase.Models.Abstractions.MergeRequestSearchResult mr,
-        GitServerBase.Models.Abstractions.DetailedMergeRequest details,
+        MergeRequestSearchResult mr,
+        DetailedMergeRequest details,
         Server server)
     {
         try
@@ -277,8 +278,8 @@ public class MergeRequestProcessor
     /// Build the prompt for Gemini with MR context and failure logs.
     /// </summary>
     private string BuildFailurePrompt(
-        GitServerBase.Models.Abstractions.MergeRequestSearchResult mr,
-        GitServerBase.Models.Abstractions.DetailedMergeRequest details,
+        MergeRequestSearchResult mr,
+        DetailedMergeRequest details,
         string failureLogs)
     {
         return $@"We are working on escroting the merge request #{mr.IID}: {mr.Title}
@@ -388,7 +389,7 @@ Please analyze the failure logs, identify the root cause, and make the necessary
         }
     }
 
-    private string GetWorkspacePath(GitServerBase.Models.Abstractions.MergeRequestSearchResult mr, Repository repository)
+    private string GetWorkspacePath(MergeRequestSearchResult mr, Repository repository)
     {
         var repoName = repository.Name ?? "unknown";
         return Path.Combine(_options.WorkspaceFolder, $"{mr.ProjectId}-{repoName}-mr-{mr.IID}");

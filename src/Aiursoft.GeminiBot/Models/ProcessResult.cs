@@ -1,4 +1,4 @@
-namespace Aiursoft.NugetNinja.GeminiBot.Models;
+namespace Aiursoft.GeminiBot.Models;
 
 /// <summary>
 /// Represents the result of processing an issue or repository.
