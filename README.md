@@ -6,7 +6,11 @@
 [![NuGet version (aiursoft.geminibot)](https://img.shields.io/nuget/v/Aiursoft.geminibot.svg)](https://www.nuget.org/packages/Aiursoft.geminibot/)
 [![Man hours](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.svg)](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.html)
 
-Nuget Ninja is a tool for detecting dependencies of .NET projects. It analyzes the dependency structure of .NET projects in a directory and builds a directed acyclic graph. And will give some modification suggestions for Nuget packages, so that the dependencies of the project are as concise and up-to-date as possible.
+Gemini Bot:
+
+* Auto start a merge request when an issue is created and assigned.
+* Auto fix failed merge requests by analyzing the pipeline logs with Gemini API.
+* Auto fix merge requests that have been reviewed with change requests.
 
 ## Installation
 

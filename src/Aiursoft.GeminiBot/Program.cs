@@ -11,6 +11,8 @@ using Aiursoft.NugetNinja.GitServerBase.Services.Providers.Gitea;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers.GitHub;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers.GitLab;
 using Aiursoft.CSTools.Services;
+using Aiursoft.Dotlang.AspNetTranslate.Services;
+using Aiursoft.Dotlang.Shared;
 using Aiursoft.NugetNinja.GitServerBase.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,9 +58,10 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddTransient<IssueProcessor>();
             services.AddTransient<MergeRequestProcessor>();
             services.AddTransient<Entry>();
+            services.AddTransient<GeminiCliService>();
 
             // Register localization services
-            services.Configure<Aiursoft.Dotlang.Shared.TranslateOptions>(translateOptions =>
+            services.Configure<TranslateOptions>(translateOptions =>
             {
                 var botOptions = new GeminiBotOptions();
                 context.Configuration.GetSection("GeminiBot").Bind(botOptions);
@@ -68,14 +71,14 @@ static IHostBuilder CreateHostBuilder(string[] args)
             });
 
             // Register all required services from Aiursoft.Dotlang.AspNetTranslate
-            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.DataAnnotationKeyExtractor>();
-            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.CshtmlLocalizer>();
-            services.AddScoped<Aiursoft.Dotlang.AspNetTranslate.Services.CSharpKeyExtractor>();
+            services.AddScoped<DataAnnotationKeyExtractor>();
+            services.AddScoped<CshtmlLocalizer>();
+            services.AddScoped<CSharpKeyExtractor>();
             services.AddTaskCanon();
-            services.AddScoped<Aiursoft.Dotlang.Shared.OllamaBasedTranslatorEngine>();
-            services.AddScoped<Aiursoft.Dotlang.Shared.CachedTranslateEngine>();
+            services.AddScoped<OllamaBasedTranslatorEngine>();
+            services.AddScoped<CachedTranslateEngine>();
             services.AddGptClient();
-            services.AddTransient<Aiursoft.Dotlang.AspNetTranslate.Services.TranslateEntry>();
+            services.AddTransient<TranslateEntry>();
             services.AddTransient<LocalizationService>();
         });
 }

@@ -1,4 +1,3 @@
-using Aiursoft.CSTools.Services;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
@@ -18,7 +17,7 @@ public class IssueProcessor
 {
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
-    private readonly CommandService _commandService;
+    private readonly GeminiCliService _geminiCliService;
     private readonly LocalizationService _localizationService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<IssueProcessor> _logger;
@@ -26,14 +25,14 @@ public class IssueProcessor
     public IssueProcessor(
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
-        CommandService commandService,
+        GeminiCliService geminiCliService,
         LocalizationService localizationService,
         IOptions<GeminiBotOptions> options,
         ILogger<IssueProcessor> logger)
     {
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
-        _commandService = commandService;
+        _geminiCliService = geminiCliService;
         _localizationService = localizationService;
         _options = options.Value;
         _logger = logger;
@@ -75,7 +74,7 @@ public class IssueProcessor
             var taskDescription = BuildTaskDescription(issue);
             _logger.LogInformation("Invoking Gemini CLI to process issue #{IssueId}...", issue.Iid);
 
-            var geminiSuccess = await InvokeGeminiCliAsync(workPath, taskDescription);
+            var geminiSuccess = await _geminiCliService.InvokeGeminiCliAsync(workPath, taskDescription, hideGitFolder: true);
             if (!geminiSuccess)
             {
                 return ProcessResult.Failed($"Gemini CLI failed to process issue #{issue.Iid}");
@@ -147,99 +146,10 @@ public class IssueProcessor
 
     private string BuildTaskDescription(Issue issue)
     {
-        return $"Issue #{issue.Iid}: {issue.Title}\n\n{issue.Description ?? "No description provided."}\n\nPlease analyze this issue and make the necessary code changes to resolve it.";
+        return $"Issue #{issue.Iid}: {issue.Title}\n\n{issue.Description ?? "No description provided."}\n\nPlease analyze this issue and make the necessary code changes to resolve it.\n\nDon't forget to bump the version after necessary changes.";
     }
 
-    private async Task<bool> InvokeGeminiCliAsync(string workPath, string taskDescription)
-    {
-        string? tempFile = null;
-        var gitPath = Path.Combine(workPath, ".git");
-        var gitBackupPath = workPath + "-hidden-git";
 
-
-        try
-        {
-            // Write task to temp file
-            tempFile = Path.Combine(workPath, ".gemini-task.txt");
-            await File.WriteAllTextAsync(tempFile, taskDescription);
-
-            // Hide .git directory to prevent Gemini from manipulating git
-            if (Directory.Exists(gitPath))
-            {
-                _logger.LogInformation("Hiding .git directory to prevent Gemini CLI from manipulating git...");
-                Directory.Move(gitPath, gitBackupPath);
-            }
-
-            _logger.LogInformation("Running Gemini CLI in {WorkPath}", workPath);
-
-            // Build Gemini command with optional --model parameter
-            var geminiCommand = "gemini --yolo";
-            if (!string.IsNullOrWhiteSpace(_options.Model))
-            {
-                geminiCommand += $" --model {_options.Model}";
-            }
-            geminiCommand += " < .gemini-task.txt";
-
-            // Build environment variables dictionary
-            IDictionary<string, string?>? envVars = null;
-            if (!string.IsNullOrWhiteSpace(_options.GeminiApiKey))
-            {
-                envVars = new Dictionary<string, string?>
-                {
-                    ["GEMINI_API_KEY"] = _options.GeminiApiKey
-                };
-            }
-
-            var (code, output, error) = await _commandService.RunCommandAsync(
-                bin: "/bin/bash",
-                arg: $"-c \"{geminiCommand}\"",
-                path: workPath,
-                timeout: _options.GeminiTimeout,
-                environmentVariables: envVars);
-
-            if (code != 0)
-            {
-                _logger.LogError("Gemini CLI failed with exit code {Code}. Output: {Output}. Error: {Error}", code, output, error);
-                return false;
-            }
-
-            _logger.LogInformation("Gemini CLI completed successfully. It says: {Output}", output);
-            return true;
-        }
-        finally
-        {
-            // Restore .git directory
-            if (Directory.Exists(gitBackupPath))
-            {
-                try
-                {
-                    _logger.LogInformation("Restoring .git directory...");
-                    if (Directory.Exists(gitPath))
-                    {
-                        Directory.Delete(gitPath, recursive: true);
-                    }
-                    Directory.Move(gitBackupPath, gitPath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to restore .git directory from backup!");
-                }
-            }
-
-            // Clean up temp file - proper error handling
-            if (tempFile != null && File.Exists(tempFile))
-            {
-                try
-                {
-                    File.Delete(tempFile);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to delete temporary file: {FilePath}", tempFile);
-                }
-            }
-        }
-    }
 
     private async Task EnsureRepositoryForkedAsync(Server server, Repository repository)
     {

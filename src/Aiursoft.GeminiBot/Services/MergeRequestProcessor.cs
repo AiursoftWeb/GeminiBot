@@ -1,4 +1,3 @@
-using Aiursoft.CSTools.Services;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
@@ -10,6 +9,7 @@ using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Aiursoft.GeminiBot.Services;
 
@@ -23,7 +23,7 @@ public class MergeRequestProcessor
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
     private readonly HttpWrapper _httpWrapper;
-    private readonly CommandService _commandService;
+    private readonly GeminiCliService _geminiCliService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<MergeRequestProcessor> _logger;
 
@@ -32,7 +32,7 @@ public class MergeRequestProcessor
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
         HttpWrapper httpWrapper,
-        CommandService commandService,
+        GeminiCliService geminiCliService,
         IOptions<GeminiBotOptions> options,
         ILogger<MergeRequestProcessor> logger)
     {
@@ -40,7 +40,7 @@ public class MergeRequestProcessor
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
         _httpWrapper = httpWrapper;
-        _commandService = commandService;
+        _geminiCliService = geminiCliService;
         _options = options.Value;
         _logger = logger;
     }
@@ -209,7 +209,7 @@ public class MergeRequestProcessor
 
             _logger.LogInformation("Invoking Gemini CLI to fix MR #{IID}...", mr.IID);
 
-            var geminiSuccess = await InvokeGeminiCliAsync(workPath, prompt);
+            var geminiSuccess = await _geminiCliService.InvokeGeminiCliAsync(workPath, prompt, hideGitFolder: false);
 
             // Run localization if enabled
             _logger.LogInformation("Checking for localization requirements...");
@@ -354,98 +354,7 @@ Human reviewers have provided feedback on this merge request. Your task is to an
 Please analyze the feedback, identify the requested changes, and make the necessary code modifications to satisfy the reviewers.";
     }
 
-    /// <summary>
-    /// Invoke Gemini CLI to fix the code. Similar to IssueProcessor but for MR fixing.
-    /// </summary>
-    private async Task<bool> InvokeGeminiCliAsync(string workPath, string taskDescription)
-    {
-        string? tempFile = null;
-        var gitPath = Path.Combine(workPath, ".git");
-        var gitBackupPath = workPath + "-hidden-git";
 
-        try
-        {
-            // Write task to temp file
-            tempFile = Path.Combine(workPath, ".gemini-task.txt");
-            await File.WriteAllTextAsync(tempFile, taskDescription);
-
-            // Hide .git directory to prevent Gemini from manipulating git
-            if (Directory.Exists(gitPath))
-            {
-                _logger.LogInformation("Hiding .git directory to prevent Gemini CLI from manipulating git...");
-                Directory.Move(gitPath, gitBackupPath);
-            }
-
-            _logger.LogInformation("Running Gemini CLI in {WorkPath}", workPath);
-
-            // Build Gemini command with optional --model parameter
-            var geminiCommand = "gemini --yolo";
-            if (!string.IsNullOrWhiteSpace(_options.Model))
-            {
-                geminiCommand += $" --model {_options.Model}";
-            }
-            geminiCommand += " < .gemini-task.txt";
-
-            // Build environment variables dictionary
-            IDictionary<string, string?>? envVars = null;
-            if (!string.IsNullOrWhiteSpace(_options.GeminiApiKey))
-            {
-                envVars = new Dictionary<string, string?>
-                {
-                    ["GEMINI_API_KEY"] = _options.GeminiApiKey
-                };
-            }
-
-            var (code, output, error) = await _commandService.RunCommandAsync(
-                bin: "/bin/bash",
-                arg: $"-c \"{geminiCommand}\"",
-                path: workPath,
-                timeout: _options.GeminiTimeout,
-                environmentVariables: envVars);
-
-            if (code != 0)
-            {
-                _logger.LogError("Gemini CLI failed with exit code {Code}. Output: {Output}. Error: {Error}", code, output, error);
-                return false;
-            }
-
-            _logger.LogInformation("Gemini CLI completed successfully. It says: {Output}", output);
-            return true;
-        }
-        finally
-        {
-            // Restore .git directory
-            if (Directory.Exists(gitBackupPath))
-            {
-                try
-                {
-                    _logger.LogInformation("Restoring .git directory...");
-                    if (Directory.Exists(gitPath))
-                    {
-                        Directory.Delete(gitPath, recursive: true);
-                    }
-                    Directory.Move(gitBackupPath, gitPath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to restore .git directory from backup!");
-                }
-            }
-
-            // Clean up temp file
-            if (tempFile != null && File.Exists(tempFile))
-            {
-                try
-                {
-                    File.Delete(tempFile);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to delete temporary file: {FilePath}", tempFile);
-                }
-            }
-        }
-    }
 
     private string GetWorkspacePath(MergeRequestSearchResult mr, Repository repository)
     {
@@ -464,7 +373,7 @@ Please analyze the feedback, identify the requested changes, and make the necess
         {
             var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
             var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
-            
+
             var botCommits = commits
                 .Where(c => c.Message.Contains("Automatically generated fix by Gemini Bot") || c.Message.Contains("Automatically generated by Gemini Bot"))
                 .ToList();
@@ -532,25 +441,40 @@ Please analyze the feedback, identify the requested changes, and make the necess
 
     private class GitLabCommit
     {
+        [JsonPropertyName("message")]
         public string Message { get; set; } = string.Empty;
+
+        [JsonPropertyName("created_at")]
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
         public DateTime Created_at { get; set; }
     }
 
     private class GitLabDiscussion
     {
+        [JsonPropertyName("notes")]
         public IEnumerable<GitLabNote> Notes { get; set; } = [];
     }
 
     private class GitLabNote
     {
+        [JsonPropertyName("body")]
         public string Body { get; set; } = string.Empty;
+
+        [JsonPropertyName("author")]
         public GitLabUser Author { get; set; } = new();
+
+        [JsonPropertyName("created_at")]
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
         public DateTime Created_at { get; set; }
+
+        [JsonPropertyName("system")]
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
         public bool System { get; set; }
     }
 
     private class GitLabUser
     {
+        [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
     }
 }
