@@ -5,9 +5,11 @@ using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
+using Aiursoft.NugetNinja.GitServerBase.Services;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace Aiursoft.GeminiBot.Services;
 
@@ -20,6 +22,7 @@ public class MergeRequestProcessor
     private readonly LocalizationService _localizationService;
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
+    private readonly HttpWrapper _httpWrapper;
     private readonly CommandService _commandService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<MergeRequestProcessor> _logger;
@@ -28,6 +31,7 @@ public class MergeRequestProcessor
         LocalizationService localizationService,
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
+        HttpWrapper httpWrapper,
         CommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<MergeRequestProcessor> logger)
@@ -35,6 +39,7 @@ public class MergeRequestProcessor
         _localizationService = localizationService;
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
+        _httpWrapper = httpWrapper;
         _commandService = commandService;
         _options = options.Value;
         _logger = logger;
@@ -81,7 +86,16 @@ public class MergeRequestProcessor
                 }
                 else
                 {
-                    _logger.LogInformation("MR #{IID} pipeline is {Status}, no action needed", mr.IID, details.Pipeline?.Status ?? "null");
+                    // Pipeline is success or null. Check for human comments.
+                    if (await ShouldProcessDueToReviewAsync(server, mr))
+                    {
+                        _logger.LogWarning("MR #{IID} has human comments after the last bot commit. Processing...", mr.IID);
+                        failedMRs.Add((mr, details));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("MR #{IID} pipeline is {Status} and no new human comments, no action needed", mr.IID, details.Pipeline?.Status ?? "null");
+                    }
                 }
             }
 
@@ -93,13 +107,13 @@ public class MergeRequestProcessor
 
             _logger.LogInformation("Found {Count} failed merge requests to fix", failedMRs.Count);
 
-            // Process each failed MR
+            // Process each MR
             foreach (var (mr, details) in failedMRs)
             {
-                await CheckAndFixFailedPipelineAsync(mr, details, server);
+                await CheckAndFixMergeRequestAsync(mr, details, server);
             }
 
-            return ProcessResult.Succeeded($"Processed {failedMRs.Count} failed MRs");
+            return ProcessResult.Succeeded($"Processed {failedMRs.Count} MRs");
         }
         catch (Exception ex)
         {
@@ -109,9 +123,9 @@ public class MergeRequestProcessor
     }
 
     /// <summary>
-    /// Check a single MR with failed pipeline, download logs, and invoke Gemini to fix.
+    /// Check a single MR, download logs or discussions, and invoke Gemini to fix.
     /// </summary>
-    private async Task CheckAndFixFailedPipelineAsync(
+    private async Task CheckAndFixMergeRequestAsync(
         MergeRequestSearchResult mr,
         DetailedMergeRequest details,
         Server server)
@@ -147,11 +161,21 @@ public class MergeRequestProcessor
                 server.Token);
 
             // Get failure logs from SOURCE project (where pipeline runs)
-            var failureLogs = await GetFailureLogsAsync(server, pipelineProjectId, details.Pipeline.Id);
+            var failureLogs = string.Empty;
+            var reviewNotes = string.Empty;
 
-            if (string.IsNullOrWhiteSpace(failureLogs))
+            if (details.Pipeline?.Status == "failed")
             {
-                _logger.LogWarning("No failure logs found for MR #{IID}", mr.IID);
+                failureLogs = await GetFailureLogsAsync(server, pipelineProjectId, details.Pipeline.Id);
+            }
+            else
+            {
+                reviewNotes = await GetFormattedDiscussionsAsync(server, mr);
+            }
+
+            if (string.IsNullOrWhiteSpace(failureLogs) && string.IsNullOrWhiteSpace(reviewNotes))
+            {
+                _logger.LogWarning("No failure logs and no review notes found for MR #{IID}", mr.IID);
                 return;
             }
 
@@ -169,8 +193,20 @@ public class MergeRequestProcessor
                 CloneMode.Full,
                 $"{server.UserName}:{server.Token}");
 
-            // Build prompt with failure context
-            var prompt = BuildFailurePrompt(mr, details, failureLogs);
+            // Build prompt
+            string prompt;
+            string commitMessage;
+            if (!string.IsNullOrWhiteSpace(failureLogs))
+            {
+                prompt = BuildFailurePrompt(mr, details, failureLogs);
+                commitMessage = $"Fix pipeline failure for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
+            }
+            else
+            {
+                prompt = BuildReviewPrompt(mr, reviewNotes);
+                commitMessage = $"Address human review for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
+            }
+
             _logger.LogInformation("Invoking Gemini CLI to fix MR #{IID}...", mr.IID);
 
             var geminiSuccess = await InvokeGeminiCliAsync(workPath, prompt);
@@ -196,8 +232,6 @@ public class MergeRequestProcessor
             // Commit and push fixes
             _logger.LogInformation("MR #{IID} has pending changes. Committing and pushing...", mr.IID);
             await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
-
-            var commitMessage = $"Fix pipeline failure for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
 
             var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, branchName);
             if (!saved)
@@ -249,7 +283,7 @@ public class MergeRequestProcessor
 
             _logger.LogInformation("Found {Count} failed jobs in pipeline {PipelineId}", failedJobs.Count, pipelineId);
 
-            var allLogs = new System.Text.StringBuilder();
+            var allLogs = new StringBuilder();
 
             foreach (var job in failedJobs)
             {
@@ -300,6 +334,24 @@ The CI/CD pipeline for this merge request has FAILED. Your task is to analyze th
 === END OF FAILURE LOGS ===
 
 Please analyze the failure logs, identify the root cause, and make the necessary code changes to fix the build/test failures.";
+    }
+
+    /// <summary>
+    /// Build the prompt for Gemini with MR context and human review notes.
+    /// </summary>
+    private string BuildReviewPrompt(
+        MergeRequestSearchResult mr,
+        string reviewNotes)
+    {
+        return $@"We are working on escroting the merge request #{mr.IID}: {mr.Title}
+
+Human reviewers have provided feedback on this merge request. Your task is to analyze the discussions below and make the necessary code changes to address the feedback.
+
+=== FEEDBACK ===
+{reviewNotes}
+=== END OF FEEDBACK ===
+
+Please analyze the feedback, identify the requested changes, and make the necessary code modifications to satisfy the reviewers.";
     }
 
     /// <summary>
@@ -399,5 +451,106 @@ Please analyze the failure logs, identify the root cause, and make the necessary
     {
         var repoName = repository.Name ?? "unknown";
         return Path.Combine(_options.WorkspaceFolder, $"{mr.ProjectId}-{repoName}-mr-{mr.IID}");
+    }
+
+    private async Task<bool> ShouldProcessDueToReviewAsync(Server server, MergeRequestSearchResult mr)
+    {
+        if (server.Provider != "GitLab")
+        {
+            return false;
+        }
+
+        try
+        {
+            var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
+            var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
+            
+            var botCommits = commits
+                .Where(c => c.Message.Contains("Automatically generated fix by Gemini Bot") || c.Message.Contains("Automatically generated by Gemini Bot"))
+                .ToList();
+
+            DateTime lastBotCommitTime = DateTime.MinValue;
+            if (botCommits.Any())
+            {
+                lastBotCommitTime = botCommits.Max(c => c.Created_at);
+            }
+
+            var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
+            var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
+
+            var humanNotes = discussions
+                .SelectMany(d => d.Notes)
+                .Where(n => !n.System && !string.Equals(n.Author.Username, server.UserName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!humanNotes.Any())
+            {
+                return false;
+            }
+
+            var latestHumanNoteTime = humanNotes.Max(n => n.Created_at);
+            return latestHumanNoteTime > lastBotCommitTime;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking for human reviews for MR #{IID}", mr.IID);
+            return false;
+        }
+    }
+
+    private async Task<string> GetFormattedDiscussionsAsync(Server server, MergeRequestSearchResult mr)
+    {
+        if (server.Provider != "GitLab")
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
+            var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
+
+            var sb = new StringBuilder();
+            var allNotes = discussions
+                .SelectMany(d => d.Notes)
+                .Where(n => !n.System)
+                .OrderBy(n => n.Created_at);
+
+            foreach (var note in allNotes)
+            {
+                sb.AppendLine($"{note.Author.Username} said: {note.Body} ({note.Created_at})");
+            }
+
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching discussions for MR #{IID}", mr.IID);
+            return string.Empty;
+        }
+    }
+
+    private class GitLabCommit
+    {
+        public string Message { get; set; } = string.Empty;
+        public DateTime Created_at { get; set; }
+    }
+
+    private class GitLabDiscussion
+    {
+        public IEnumerable<GitLabNote> Notes { get; set; } = [];
+    }
+
+    private class GitLabNote
+    {
+        public string Body { get; set; } = string.Empty;
+        public GitLabUser Author { get; set; } = new();
+        public DateTime Created_at { get; set; }
+        public bool System { get; set; }
+    }
+
+    private class GitLabUser
+    {
+        public string Username { get; set; } = string.Empty;
     }
 }
