@@ -262,9 +262,6 @@ Please review carefully before merging.";
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
-        
-        [JsonPropertyName("username")]
-        public string Username { get; set; } = string.Empty;
     }
 
     private class GitLabMergeRequest
