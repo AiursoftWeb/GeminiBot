@@ -3,9 +3,11 @@ using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models;
+using Aiursoft.NugetNinja.GitServerBase.Services;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 
 namespace Aiursoft.GeminiBot.Services;
 
@@ -18,6 +20,7 @@ public class IssueProcessor
     private readonly IVersionControlService _versionControl;
     private readonly WorkspaceManager _workspaceManager;
     private readonly GeminiCliService _geminiCliService;
+    private readonly HttpWrapper _httpWrapper;
     private readonly LocalizationService _localizationService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<IssueProcessor> _logger;
@@ -26,6 +29,7 @@ public class IssueProcessor
         IVersionControlService versionControl,
         WorkspaceManager workspaceManager,
         GeminiCliService geminiCliService,
+        HttpWrapper httpWrapper,
         LocalizationService localizationService,
         IOptions<GeminiBotOptions> options,
         ILogger<IssueProcessor> logger)
@@ -33,6 +37,7 @@ public class IssueProcessor
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
         _geminiCliService = geminiCliService;
+        _httpWrapper = httpWrapper;
         _localizationService = localizationService;
         _options = options.Value;
         _logger = logger;
@@ -215,10 +220,53 @@ Please review carefully before merging.";
                 title,
                 body,
                 server.Token);
+
+            if (server.Provider == "GitLab")
+            {
+                try
+                {
+                    // 1. Get Bot User ID
+                    var userUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/user";
+                    var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
+                    
+                    // 2. Find the MR we just created
+                    var mrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/merge_requests?state=opened&source_branch={branchName}";
+                    var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequest>>(mrUrl, HttpMethod.Get, server.Token);
+                    var mr = mrs.FirstOrDefault();
+
+                    if (mr != null)
+                    {
+                         // 3. Assign to Bot
+                         var updateUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/merge_requests/{mr.Iid}?assignee_id={user.Id}";
+                         await _httpWrapper.SendHttpAndGetJson<object>(updateUrl, HttpMethod.Put, server.Token);
+                         _logger.LogInformation("Assigned MR #{IID} to bot user {UserName}", mr.Iid, server.UserName);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find created MR for issue #{IssueId} with branch {BranchName}", issue.Iid, branchName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to assign MR to bot for issue #{IssueId}", issue.Iid);
+                }
+            }
         }
         else
         {
             _logger.LogInformation("Skipped creating new pull request for issue #{IssueId} because one already exists", issue.Iid);
         }
+    }
+
+    private class GitLabUser
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+    }
+
+    private class GitLabMergeRequest
+    {
+        [JsonPropertyName("iid")]
+        public int Iid { get; set; }
     }
 }
