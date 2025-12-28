@@ -16,7 +16,7 @@ public class GeminiBotOptions
     /// <summary>
     /// Timeout for Gemini CLI execution.
     /// </summary>
-    public TimeSpan GeminiTimeout { get; set; } = TimeSpan.FromMinutes(20);
+    public TimeSpan GeminiTimeout { get; set; } = TimeSpan.FromMinutes(35);
 
     /// <summary>
     /// Delay in milliseconds when waiting for a forked repository to become available.

@@ -46,7 +46,7 @@ cat ./appsettings.json
   ],
   "GeminiBot": {
     "WorkspaceFolder": "/tmp/NugetNinjaWorkspace",
-    "GeminiTimeout": "00:20:00",
+    "GeminiTimeout": "00:35:00",
     "ForkWaitDelayMs": 5000,
     "Model": "gemini-3-pro-preview",
     "GeminiApiKey": ""

@@ -1,3 +1,4 @@
+using Aiursoft.CSTools.Services;
 using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
@@ -24,6 +25,7 @@ public class MergeRequestProcessor
     private readonly WorkspaceManager _workspaceManager;
     private readonly HttpWrapper _httpWrapper;
     private readonly GeminiCliService _geminiCliService;
+    private readonly CommandService _commandService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<MergeRequestProcessor> _logger;
 
@@ -33,6 +35,7 @@ public class MergeRequestProcessor
         WorkspaceManager workspaceManager,
         HttpWrapper httpWrapper,
         GeminiCliService geminiCliService,
+        CommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<MergeRequestProcessor> logger)
     {
@@ -41,6 +44,7 @@ public class MergeRequestProcessor
         _workspaceManager = workspaceManager;
         _httpWrapper = httpWrapper;
         _geminiCliService = geminiCliService;
+        _commandService = commandService;
         _options = options.Value;
         _logger = logger;
     }
@@ -222,22 +226,32 @@ public class MergeRequestProcessor
             // Wait for Gemini to finish
             await Task.Delay(1000);
 
-            // Check for changes
-            if (!await _workspaceManager.PendingCommit(workPath))
+            // Check for both pending changes and unpushed commits
+            var hasPendingChanges = await _workspaceManager.PendingCommit(workPath);
+            var isAheadOfOrigin = await IsAheadOfOrigin(workPath, branchName);
+
+            if (!hasPendingChanges && !isAheadOfOrigin)
             {
-                _logger.LogInformation("MR #{IID} - Gemini made no changes", mr.IID);
+                _logger.LogInformation("MR #{IID} - No changes detected (no pending changes and not ahead of origin)", mr.IID);
                 return;
             }
 
-            // Commit and push fixes
-            _logger.LogInformation("MR #{IID} has pending changes. Committing and pushing...", mr.IID);
-            await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
-
-            var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, branchName);
-            if (!saved)
+            // Commit pending changes if any exist
+            if (hasPendingChanges)
             {
-                _logger.LogError("Failed to commit changes for MR #{IID}", mr.IID);
-                return;
+                _logger.LogInformation("MR #{IID} has pending changes. Committing...", mr.IID);
+                await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
+
+                var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, branchName);
+                if (!saved)
+                {
+                    _logger.LogError("Failed to commit changes for MR #{IID}", mr.IID);
+                    return;
+                }
+            }
+            else
+            {
+                _logger.LogInformation("MR #{IID} - No pending changes, but HEAD is ahead of origin. Will push existing commits.", mr.IID);
             }
 
             // Push to the MR's source branch
@@ -295,9 +309,16 @@ public class MergeRequestProcessor
                     projectId,
                     job.Id);
 
-                allLogs.AppendLine($"\n\n=== Job: {job.Name} (Stage: {job.Stage}) ===");
-                allLogs.AppendLine(log);
-                allLogs.AppendLine("=== End of Job Log ===\n");
+                if (!string.IsNullOrWhiteSpace(log))
+                {
+                    allLogs.AppendLine($"\n\n=== Job: {job.Name} (Stage: {job.Stage}) ===");
+                    allLogs.AppendLine(log);
+                    allLogs.AppendLine("=== End of Job Log ===\n");
+                }
+                else
+                {
+                    _logger.LogWarning("Job {JobId} has no log", job.Id);
+                }
             }
 
             return allLogs.ToString();
@@ -333,7 +354,9 @@ The CI/CD pipeline for this merge request has FAILED. Your task is to analyze th
 {failureLogs}
 === END OF FAILURE LOGS ===
 
-Please analyze the failure logs, identify the root cause, and make the necessary code changes to fix the build/test failures.";
+Please read git log, analyze the failure logs, identify the root cause, and make the necessary code changes to fix the build/test failures.
+
+Don't forget to run git commit after making changes.";
     }
 
     /// <summary>
@@ -351,7 +374,11 @@ Human reviewers have provided feedback on this merge request. Your task is to an
 {reviewNotes}
 === END OF FEEDBACK ===
 
-Please analyze the feedback, identify the requested changes, and make the necessary code modifications to satisfy the reviewers.";
+Please read git log, analyze the feedback, identify the requested changes, and make the necessary code modifications to satisfy the reviewers.
+
+Please also bump the version of the updated nuget package projects if necessary.
+
+Don't forget to run git commit after making changes.";
     }
 
 
@@ -476,5 +503,46 @@ Please analyze the feedback, identify the requested changes, and make the necess
     {
         [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Check if the current HEAD is ahead of the remote tracking branch.
+    /// Returns true if there are commits that haven't been pushed to origin.
+    /// </summary>
+    private async Task<bool> IsAheadOfOrigin(string workPath, string branchName)
+    {
+        try
+        {
+            // Count commits that are in HEAD but not in origin/<branchName>
+            var (exitCode, output, error) = await _commandService.RunCommandAsync(
+                bin: "git",
+                arg: $"rev-list --count HEAD ^origin/{branchName}",
+                path: workPath,
+                timeout: TimeSpan.FromSeconds(10));
+
+            if (exitCode != 0)
+            {
+                _logger.LogWarning("git rev-list command failed with exit code {ExitCode}. Error: {Error}", exitCode, error);
+                return false;
+            }
+
+            if (int.TryParse(output.Trim(), out var commitCount))
+            {
+                var isAhead = commitCount > 0;
+                if (isAhead)
+                {
+                    _logger.LogInformation("Local HEAD is {Count} commit(s) ahead of origin/{Branch}", commitCount, branchName);
+                }
+                return isAhead;
+            }
+
+            _logger.LogWarning("Failed to parse commit count from git rev-list: {Result}", output);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking if HEAD is ahead of origin/{Branch}. Assuming not ahead.", branchName);
+            return false;
+        }
     }
 }
