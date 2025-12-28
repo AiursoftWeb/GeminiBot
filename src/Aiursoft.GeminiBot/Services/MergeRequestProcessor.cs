@@ -57,12 +57,30 @@ public class MergeRequestProcessor
     {
         try
         {
-            _logger.LogInformation("Checking merge requests submitted by {UserName}...", server.UserName);
+            IReadOnlyCollection<MergeRequestSearchResult> mergeRequests;
+            if (server.Provider == "GitLab")
+            {
+                _logger.LogInformation("Checking merge requests assigned to {UserName}...", server.UserName);
+                var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=assigned_to_me&state=opened&per_page=100";
+                var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
 
-            var mergeRequests = await _versionControl.GetOpenMergeRequests(
-                server.EndPoint,
-                server.UserName,
-                server.Token);
+                mergeRequests = gitLabMrs.Select(m => new MergeRequestSearchResult
+                {
+                    IID = m.Iid,
+                    Title = m.Title,
+                    ProjectId = m.ProjectId,
+                    SourceProjectId = m.SourceProjectId,
+                    SourceBranch = m.SourceBranch
+                }).ToList();
+            }
+            else
+            {
+                _logger.LogInformation("Checking merge requests submitted by {UserName}...", server.UserName);
+                mergeRequests = await _versionControl.GetOpenMergeRequests(
+                    server.EndPoint,
+                    server.UserName,
+                    server.Token);
+            }
 
             var failedMRs = new List<(MergeRequestSearchResult mr, DetailedMergeRequest details)>();
 
@@ -503,6 +521,24 @@ Don't forget to run git commit after making changes.";
     {
         [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
+    }
+
+    private class GitLabMergeRequestDto
+    {
+        [JsonPropertyName("iid")]
+        public int Iid { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = string.Empty;
+
+        [JsonPropertyName("project_id")]
+        public int ProjectId { get; set; }
+
+        [JsonPropertyName("source_project_id")]
+        public int SourceProjectId { get; set; }
+
+        [JsonPropertyName("source_branch")]
+        public string SourceBranch { get; set; } = string.Empty;
     }
 
     /// <summary>
