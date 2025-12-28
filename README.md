@@ -12,6 +12,11 @@ Gemini Bot:
 * Auto fix failed merge requests by analyzing the pipeline logs with Gemini API.
 * Auto fix merge requests that have been reviewed with change requests.
 
+To use Gemini Bot, you can:
+
+* Assign an issue to it.
+* Send comments to it's merge requests.
+
 ## Installation
 
 Requirements:
