@@ -58,11 +58,17 @@ public class MergeRequestProcessor
         try
         {
             IReadOnlyCollection<MergeRequestSearchResult> mergeRequests;
+            var targetBranches = new Dictionary<int, string>();
             if (server.Provider == "GitLab")
             {
                 _logger.LogInformation("Checking merge requests assigned to {UserName}...", server.UserName);
                 var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=assigned_to_me&state=opened&per_page=100";
                 var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
+
+                foreach (var m in gitLabMrs)
+                {
+                    targetBranches[m.Iid] = m.TargetBranch;
+                }
 
                 mergeRequests = gitLabMrs.Select(m => new MergeRequestSearchResult
                 {
@@ -82,7 +88,7 @@ public class MergeRequestProcessor
                     server.Token);
             }
 
-            var failedMRs = new List<(MergeRequestSearchResult mr, DetailedMergeRequest details)>();
+            var mrsToProcess = new List<MRToProcess>();
 
             foreach (var mr in mergeRequests)
             {
@@ -95,47 +101,48 @@ public class MergeRequestProcessor
                     mr.ProjectId,
                     mr.IID);
 
-                // Check if pipeline exists and has failed
-                if (details.Pipeline != null && details.Pipeline.Status != "success")
-                {
-                    _logger.LogWarning("MR #{IID} has pipeline with status: {Status}", mr.IID, details.Pipeline.Status);
+                var hasConflicts = details.HasConflicts;
+                var hasNewHumanReview = await ShouldProcessDueToReviewAsync(server, mr);
+                var pipelineFailed = details.Pipeline?.Status == "failed";
+                var targetBranch = targetBranches.GetValueOrDefault(mr.IID, "main");
 
-                    // Only process failed pipelines, skip running ones
-                    if (details.Pipeline.Status == "failed")
+                if (hasConflicts || hasNewHumanReview || pipelineFailed)
+                {
+                    _logger.LogWarning("MR #{IID} needs attention. Conflict: {HasConflicts}, New Human Review: {HasNewReview}, Pipeline Failed: {PipelineFailed}",
+                        mr.IID, hasConflicts, hasNewHumanReview, pipelineFailed);
+                    
+                    mrsToProcess.Add(new MRToProcess
                     {
-                        failedMRs.Add((mr, details));
-                    }
+                        SearchResult = mr,
+                        Details = details,
+                        HasConflicts = hasConflicts,
+                        HasNewHumanReview = hasNewHumanReview,
+                        PipelineFailed = pipelineFailed,
+                        TargetBranch = targetBranch
+                    });
                 }
                 else
                 {
-                    // Pipeline is success or null. Check for human comments.
-                    if (await ShouldProcessDueToReviewAsync(server, mr))
-                    {
-                        _logger.LogWarning("MR #{IID} has human comments after the last bot commit. Processing...", mr.IID);
-                        failedMRs.Add((mr, details));
-                    }
-                    else
-                    {
-                        _logger.LogInformation("MR #{IID} pipeline is {Status} and no new human comments, no action needed", mr.IID, details.Pipeline?.Status ?? "null");
-                    }
+                    _logger.LogInformation("MR #{IID} is healthy. Pipeline: {Status}, Conflicts: {HasConflicts}, No new human review.",
+                        mr.IID, details.Pipeline?.Status ?? "null", hasConflicts);
                 }
             }
 
-            if (failedMRs.Count == 0)
+            if (mrsToProcess.Count == 0)
             {
-                _logger.LogInformation("No failed merge requests found. All clear!");
-                return ProcessResult.Succeeded("No failed MRs to fix");
+                _logger.LogInformation("No merge requests need attention. All clear!");
+                return ProcessResult.Succeeded("No MRs to fix");
             }
 
-            _logger.LogInformation("Found {Count} failed merge requests to fix", failedMRs.Count);
+            _logger.LogInformation("Found {Count} merge requests to fix", mrsToProcess.Count);
 
             // Process each MR
-            foreach (var (mr, details) in failedMRs)
+            foreach (var item in mrsToProcess)
             {
-                await CheckAndFixMergeRequestAsync(mr, details, server);
+                await CheckAndFixMergeRequestAsync(item, server);
             }
 
-            return ProcessResult.Succeeded($"Processed {failedMRs.Count} MRs");
+            return ProcessResult.Succeeded($"Processed {mrsToProcess.Count} MRs");
         }
         catch (Exception ex)
         {
@@ -144,33 +151,32 @@ public class MergeRequestProcessor
         }
     }
 
+    private class MRToProcess
+    {
+        public required MergeRequestSearchResult SearchResult { get; init; }
+        public required DetailedMergeRequest Details { get; init; }
+        public bool HasConflicts { get; init; }
+        public bool HasNewHumanReview { get; init; }
+        public bool PipelineFailed { get; init; }
+        public string TargetBranch { get; init; } = "main";
+    }
+
     /// <summary>
     /// Check a single MR, download logs or discussions, and invoke Gemini to fix.
     /// </summary>
     private async Task CheckAndFixMergeRequestAsync(
-        MergeRequestSearchResult mr,
-        DetailedMergeRequest details,
+        MRToProcess item,
         Server server)
     {
+        var mr = item.SearchResult;
+        var details = item.Details;
         try
         {
-            _logger.LogInformation("Processing failed MR #{IID}: {Title}", mr.IID, mr.Title);
-
-            if (details.Pipeline == null)
-            {
-                _logger.LogWarning("MR #{IID} has no pipeline information", mr.IID);
-                return;
-            }
-
-            if (details.Pipeline.Id <= 0)
-            {
-                _logger.LogWarning("MR #{IID} has invalid pipeline ID: {PipelineId}", mr.IID, details.Pipeline.Id);
-                return;
-            }
+            _logger.LogInformation("Processing MR #{IID}: {Title}", mr.IID, mr.Title);
 
             // CRITICAL: Pipeline runs in the SOURCE project (fork), not the target project!
             var pipelineProjectId = mr.SourceProjectId > 0 ? mr.SourceProjectId : mr.ProjectId;
-            _logger.LogInformation("MR #{IID}: Using project ID {ProjectId} for pipeline operations (source: {SourceProjectId}, target: {TargetProjectId})",
+            _logger.LogInformation("MR #{IID}: Using project ID {ProjectId} for operations (source: {SourceProjectId}, target: {TargetProjectId})",
                 mr.IID, pipelineProjectId, mr.SourceProjectId, mr.ProjectId);
 
             // Get repository details from SOURCE project (where the branch exists)
@@ -182,22 +188,42 @@ public class MergeRequestProcessor
                 string.Empty,
                 server.Token);
 
-            // Get failure logs from SOURCE project (where pipeline runs)
             var failureLogs = string.Empty;
             var reviewNotes = string.Empty;
+            string prompt;
+            string commitMessage;
 
-            if (details.Pipeline?.Status == "failed")
+            if (item.HasConflicts)
             {
+                prompt = BuildConflictPrompt(mr, item.TargetBranch);
+                commitMessage = $"Resolve merge conflicts for MR #{mr.IID} by merging {item.TargetBranch}\n\nAutomatically generated fix by Gemini Bot.";
+            }
+            else if (item.HasNewHumanReview)
+            {
+                reviewNotes = await GetFormattedDiscussionsAsync(server, mr);
+                prompt = BuildReviewPrompt(mr, reviewNotes);
+                commitMessage = $"Address human review for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
+            }
+            else if (item.PipelineFailed)
+            {
+                if (details.Pipeline == null || details.Pipeline.Id <= 0)
+                {
+                    _logger.LogWarning("MR #{IID} is marked as pipeline failed but has no valid pipeline ID", mr.IID);
+                    return;
+                }
                 failureLogs = await GetFailureLogsAsync(server, pipelineProjectId, details.Pipeline.Id);
+                prompt = BuildFailurePrompt(mr, details, failureLogs);
+                commitMessage = $"Fix pipeline failure for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
             }
             else
             {
-                reviewNotes = await GetFormattedDiscussionsAsync(server, mr);
+                _logger.LogWarning("MR #{IID} was marked for processing but no action identified.", mr.IID);
+                return;
             }
 
-            if (string.IsNullOrWhiteSpace(failureLogs) && string.IsNullOrWhiteSpace(reviewNotes))
+            if (string.IsNullOrWhiteSpace(failureLogs) && string.IsNullOrWhiteSpace(reviewNotes) && !item.HasConflicts)
             {
-                _logger.LogWarning("No failure logs and no review notes found for MR #{IID}", mr.IID);
+                _logger.LogWarning("No logs, no review notes and no conflicts found for MR #{IID}", mr.IID);
                 return;
             }
 
@@ -217,20 +243,6 @@ public class MergeRequestProcessor
 
             // Set user config right after reset so Gemini can commit if needed
             await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
-
-            // Build prompt
-            string prompt;
-            string commitMessage;
-            if (!string.IsNullOrWhiteSpace(failureLogs))
-            {
-                prompt = BuildFailurePrompt(mr, details, failureLogs);
-                commitMessage = $"Fix pipeline failure for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
-            }
-            else
-            {
-                prompt = BuildReviewPrompt(mr, reviewNotes);
-                commitMessage = $"Address human review for MR #{mr.IID}\n\nAutomatically generated fix by Gemini Bot.";
-            }
 
             _logger.LogInformation("Invoking Gemini CLI to fix MR #{IID}...", mr.IID);
 
@@ -353,6 +365,26 @@ public class MergeRequestProcessor
             _logger.LogError(ex, "Error getting failure logs for pipeline {PipelineId}", pipelineId);
             return string.Empty;
         }
+    }
+
+    private string BuildConflictPrompt(
+        MergeRequestSearchResult mr,
+        string targetBranch)
+    {
+        return $@"We are working on escorting the merge request #{mr.IID}: {mr.Title}
+
+There are merge conflicts between the source branch '{mr.SourceBranch}' and the target branch '{targetBranch}'.
+
+Your task is to:
+1. Merge the target branch '{targetBranch}' into the current branch.
+2. Resolve any merge conflicts that arise.
+3. Ensure the code still builds and looks correct.
+
+Please run 'git fetch origin {targetBranch}' and then 'git merge origin/{targetBranch}' to start the merge process. 
+
+Please also bump the version of the updated nuget package projects if necessary.
+
+After resolving conflicts, don't forget to run git commit.";
     }
 
     /// <summary>
@@ -541,6 +573,9 @@ Don't forget to run git commit after making changes.";
 
         [JsonPropertyName("source_branch")]
         public string SourceBranch { get; set; } = string.Empty;
+
+        [JsonPropertyName("target_branch")]
+        public string TargetBranch { get; set; } = string.Empty;
     }
 
     /// <summary>
