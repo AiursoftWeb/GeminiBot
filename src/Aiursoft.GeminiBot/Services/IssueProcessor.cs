@@ -153,7 +153,7 @@ public class IssueProcessor
 
     private string BuildTaskDescription(Issue issue)
     {
-        return $"Issue #{issue.Iid}: {issue.Title}\n\n{issue.Description ?? "No description provided."}\n\nPlease analyze this issue and make the necessary code changes to resolve it.\n\nDon't forget to bump the version for updated nuget package projects after necessary changes.";
+        return $"Issue #{issue.Iid}: {issue.Title}\n\n{issue.Description ?? "No description provided."}\n\nPlease analyze this issue and make the necessary code changes to resolve it.\n\nDon't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
     }
 
 
