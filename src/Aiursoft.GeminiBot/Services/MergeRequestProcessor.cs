@@ -241,6 +241,9 @@ public class MergeRequestProcessor
                 CloneMode.Full,
                 $"{server.UserName}:{server.Token}");
 
+            // Set user config right after reset so Gemini can commit if needed
+            await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
+
             _logger.LogInformation("Invoking Gemini CLI to fix MR #{IID}...", mr.IID);
 
             var geminiSuccess = await _geminiCliService.InvokeGeminiCliAsync(workPath, prompt, hideGitFolder: false);
@@ -270,7 +273,6 @@ public class MergeRequestProcessor
             if (hasPendingChanges)
             {
                 _logger.LogInformation("MR #{IID} has pending changes. Committing...", mr.IID);
-                await _workspaceManager.SetUserConfig(workPath, server.DisplayName, server.UserEmail);
 
                 var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, branchName);
                 if (!saved)

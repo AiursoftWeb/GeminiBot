@@ -1,0 +1,14 @@
+We are working on escroting the merge request #3: Fix for issue #3: Merge request 如果遇到conflict要自动修conflict
+
+Human reviewers have provided feedback on this merge request. Your task is to analyze the discussions below and make the necessary code changes to address the feedback.
+
+=== FEEDBACK ===
+anduin said: 此pr本身有conflict了。请pull master。 (12/29/2025 5:51:38 AM)
+
+=== END OF FEEDBACK ===
+
+Please read git log, analyze the feedback, identify the requested changes, and make the necessary code modifications to satisfy the reviewers.
+
+Please also bump the version of the updated nuget package projects if necessary.
+
+Don't forget to run git commit after making changes.
