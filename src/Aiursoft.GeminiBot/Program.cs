@@ -4,6 +4,7 @@ using Aiursoft.GitRunner;
 using Aiursoft.GptClient;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Services;
+using Aiursoft.GeminiBot.Services.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers.AzureDevOps;
@@ -53,6 +54,8 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddTransient<IVersionControlService, AzureDevOpsService>();
             services.AddTransient<IVersionControlService, GitLabService>();
             services.AddTransient<HttpWrapper>();
+            services.AddTransient<IGeminiWorkspaceManager, GeminiWorkspaceManager>();
+            services.AddTransient<IGeminiCommandService, GeminiCommandService>();
             services.AddTransient<WorkspaceManager>();
             services.AddTransient<CommandService>();
             services.AddTransient<IssueProcessor>();

@@ -31,7 +31,7 @@ public class LocalizationService
     /// </summary>
     /// <param name="workspacePath">Path to the workspace root directory</param>
     /// <returns>True if any localization was attempted, false otherwise</returns>
-    public async Task<bool> LocalizeProjectAsync(string workspacePath)
+    public virtual async Task<bool> LocalizeProjectAsync(string workspacePath)
     {
         if (!_options.LocalizationEnabled)
         {

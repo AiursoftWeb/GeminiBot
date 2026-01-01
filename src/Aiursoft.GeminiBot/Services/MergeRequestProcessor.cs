@@ -3,6 +3,7 @@ using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Models;
+using Aiursoft.GeminiBot.Services.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Services;
@@ -22,20 +23,20 @@ public class MergeRequestProcessor
 {
     private readonly LocalizationService _localizationService;
     private readonly IVersionControlService _versionControl;
-    private readonly WorkspaceManager _workspaceManager;
+    private readonly IGeminiWorkspaceManager _workspaceManager;
     private readonly HttpWrapper _httpWrapper;
     private readonly GeminiCliService _geminiCliService;
-    private readonly CommandService _commandService;
+    private readonly IGeminiCommandService _commandService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<MergeRequestProcessor> _logger;
 
     public MergeRequestProcessor(
         LocalizationService localizationService,
         IVersionControlService versionControl,
-        WorkspaceManager workspaceManager,
+        IGeminiWorkspaceManager workspaceManager,
         HttpWrapper httpWrapper,
         GeminiCliService geminiCliService,
-        CommandService commandService,
+        IGeminiCommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<MergeRequestProcessor> logger)
     {
@@ -156,17 +157,6 @@ public class MergeRequestProcessor
         }
     }
 
-    private class MRToProcess
-    {
-        public required MergeRequestSearchResult SearchResult { get; init; }
-        public required DetailedMergeRequest Details { get; init; }
-        public bool HasConflicts { get; init; }
-        public bool HasNewHumanReview { get; init; }
-        public bool PipelineFailed { get; init; }
-        public string TargetBranch { get; init; } = "main";
-        public string? AuthorName { get; init; }
-    }
-
     /// <summary>
     /// Check a single MR, download logs or discussions, and invoke Gemini to fix.
     /// </summary>
@@ -276,7 +266,7 @@ public class MergeRequestProcessor
 
             // Check for both pending changes and unpushed commits
             var hasPendingChanges = await _workspaceManager.PendingCommit(workPath);
-            var isAheadOfOrigin = !isOthersMr && await IsAheadOfOrigin(workPath, branchName);
+            var isAheadOfOrigin = await IsAheadOfOrigin(workPath, branchName);
 
             if (!hasPendingChanges && !isAheadOfOrigin)
             {
@@ -640,72 +630,6 @@ Don't forget to run git commit after making changes.";
             _logger.LogError(ex, "Error fetching discussions for MR #{IID}", mr.IID);
             return string.Empty;
         }
-    }
-
-    private class GitLabCommit
-    {
-        [JsonPropertyName("message")]
-        public string Message { get; set; } = string.Empty;
-
-        [JsonPropertyName("created_at")]
-        // ReSharper disable once UnusedAutoPropertyAccessor.Local
-        public DateTime Created_at { get; set; }
-    }
-
-    private class GitLabDiscussion
-    {
-        [JsonPropertyName("notes")]
-        public IEnumerable<GitLabNote> Notes { get; set; } = [];
-    }
-
-    private class GitLabNote
-    {
-        [JsonPropertyName("body")]
-        public string Body { get; set; } = string.Empty;
-
-        [JsonPropertyName("author")]
-        public GitLabUser Author { get; set; } = new();
-
-        [JsonPropertyName("created_at")]
-        // ReSharper disable once UnusedAutoPropertyAccessor.Local
-        public DateTime Created_at { get; set; }
-
-        [JsonPropertyName("system")]
-        // ReSharper disable once UnusedAutoPropertyAccessor.Local
-        public bool System { get; set; }
-    }
-
-    private class GitLabUser
-    {
-        [JsonPropertyName("id")]
-        public int Id { get; set; }
-
-        [JsonPropertyName("username")]
-        public string Username { get; set; } = string.Empty;
-    }
-
-    private class GitLabMergeRequestDto
-    {
-        [JsonPropertyName("iid")]
-        public int Iid { get; set; }
-
-        [JsonPropertyName("title")]
-        public string Title { get; set; } = string.Empty;
-
-        [JsonPropertyName("project_id")]
-        public int ProjectId { get; set; }
-
-        [JsonPropertyName("source_project_id")]
-        public int SourceProjectId { get; set; }
-
-        [JsonPropertyName("source_branch")]
-        public string SourceBranch { get; set; } = string.Empty;
-
-        [JsonPropertyName("target_branch")]
-        public string TargetBranch { get; set; } = string.Empty;
-
-        [JsonPropertyName("author")]
-        public GitLabUser Author { get; set; } = new();
     }
 
     /// <summary>
