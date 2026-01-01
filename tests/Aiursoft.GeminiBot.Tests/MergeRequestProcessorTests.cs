@@ -1,6 +1,3 @@
-using Aiursoft.CSTools.Services;
-using Aiursoft.GitRunner;
-using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Services;
 using Aiursoft.GeminiBot.Models;
@@ -9,16 +6,11 @@ using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Services;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
-using Aiursoft.Dotlang.AspNetTranslate.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using System.Text;
 using System.Text.Json;
 using System.Net;
-using System.Net.Http.Headers;
-using System.Reflection;
 
 namespace Aiursoft.GeminiBot.Tests;
 

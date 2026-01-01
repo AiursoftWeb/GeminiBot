@@ -1,5 +1,3 @@
-using Aiursoft.CSTools.Services;
-using Aiursoft.GitRunner;
 using Aiursoft.GitRunner.Models;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Models;
@@ -11,7 +9,6 @@ using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
-using System.Text.Json.Serialization;
 
 namespace Aiursoft.GeminiBot.Services;
 
