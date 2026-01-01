@@ -1,0 +1,406 @@
+We are working on escroting the merge request #6: Fix for issue #6: 现在，geminibot会非常聪明的找assign给自己的merge request，并确保review修正、无conflict、pipeline全过。这很好，但是它可能会push到错误的仓库。
+
+Pipeline Web URL: https://gitlab.aiursoft.com/gemini-bot/geminibot/-/pipelines/40694
+Pipeline Status: failed
+
+The CI/CD pipeline for this merge request has FAILED. Your task is to analyze the failure logs below and fix the code to make the pipeline pass.
+
+=== FAILURE LOGS ===
+
+
+=== Job: test (Stage: test) ===
+2026-01-01T15:16:04.246951Z 00O [0KRunning with gitlab-runner 18.7.0 (901991dd)[0;m
+2026-01-01T15:16:04.246962Z 00O [0K  on d437c200f163 wjuYPY19y, system ID: s_644bf7a70601[0;m
+2026-01-01T15:16:04.246978Z 00O section_start:1767280564:prepare_executor
+2026-01-01T15:16:04.246979Z 00O+[0K[0K[36;1mPreparing the "shell" executor[0;m[0;m
+2026-01-01T15:16:04.247031Z 00O [0KUsing Shell (bash) executor...[0;m
+2026-01-01T15:16:04.247032Z 00O section_end:1767280564:prepare_executor
+2026-01-01T15:16:04.247033Z 00O+[0Ksection_start:1767280564:prepare_script
+2026-01-01T15:16:04.247105Z 00O+[0K[0K[36;1mPreparing environment[0;m[0;m
+2026-01-01T15:16:04.256003Z 01O Running on d437c200f163...
+2026-01-01T15:16:04.257739Z 00O section_end:1767280564:prepare_script
+2026-01-01T15:16:04.257743Z 00O+[0Ksection_start:1767280564:get_sources
+2026-01-01T15:16:04.257970Z 00O+[0K[0K[36;1mGetting source from Git repository[0;m[0;m
+2026-01-01T15:16:04.284767Z 01O [32;1mGitaly correlation ID: 01KDX22NW29HW409D1A29VR4Y1[0;m
+2026-01-01T15:16:04.288404Z 01O [32;1mFetching changes with git depth set to 20...[0;m
+2026-01-01T15:16:04.289640Z 01O Reinitialized existing Git repository in /home/gitlab-runner/builds/geminibot/40694/.git/
+2026-01-01T15:16:04.435026Z 01O [32;1mChecking out 6838dd8e as detached HEAD (ref is fix-issue-6)...[0;m
+2026-01-01T15:16:04.438528Z 01O Removing src/Aiursoft.GeminiBot/obj/
+2026-01-01T15:16:04.438531Z 01O Removing tests/Aiursoft.GeminiBot.Tests/obj/
+2026-01-01T15:16:04.440926Z 01O [32;1mSkipping Git submodules setup[0;m
+2026-01-01T15:16:04.441874Z 00O section_end:1767280564:get_sources
+2026-01-01T15:16:04.441881Z 00O+[0Ksection_start:1767280564:step_script
+2026-01-01T15:16:04.442178Z 00O+[0K[0K[36;1mExecuting "step_script" stage of the job script[0;m[0;m
+2026-01-01T15:16:04.454604Z 01O [32;1m$ export DOTNET_CLI_TELEMETRY_OPTOUT=1[0;m
+2026-01-01T15:16:04.454620Z 01O [32;1m$ export PATH=$PATH:$HOME/.dotnet/tools[0;m
+2026-01-01T15:16:04.454624Z 01O [32;1m$ which jb || dotnet tool install JetBrains.ReSharper.GlobalTools --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-01T15:16:04.455366Z 01O /home/gitlab-runner/.dotnet/tools/jb
+2026-01-01T15:16:04.455422Z 01O [32;1m$ which reportgenerator || dotnet tool install dotnet-reportgenerator-globaltool --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-01T15:16:04.455966Z 01O /home/gitlab-runner/.dotnet/tools/reportgenerator
+2026-01-01T15:16:04.456319Z 01O [32;1m$ echo "Hostname: $(hostname)"[0;m
+2026-01-01T15:16:04.456785Z 01O Hostname: d437c200f163
+2026-01-01T15:16:04.456788Z 01O [32;1m$ dotnet --info[0;m
+2026-01-01T15:16:04.524333Z 01O .NET SDK:
+2026-01-01T15:16:04.524340Z 01O  Version:           10.0.100
+2026-01-01T15:16:04.524341Z 01O  Commit:            b0f34d51fc
+2026-01-01T15:16:04.543259Z 01O  Workload version:  10.0.100-manifests.4eab3e0f
+2026-01-01T15:16:04.543726Z 01O  MSBuild version:   18.0.2+b0f34d51f
+2026-01-01T15:16:04.543732Z 01O 
+2026-01-01T15:16:04.543743Z 01O Runtime Environment:
+2026-01-01T15:16:04.544129Z 01O  OS Name:     ubuntu
+2026-01-01T15:16:04.544130Z 01O  OS Version:  25.10
+2026-01-01T15:16:04.545056Z 01O  OS Platform: Linux
+2026-01-01T15:16:04.550137Z 01O  RID:         ubuntu.25.10-x64
+2026-01-01T15:16:04.550140Z 01O  Base Path:   /usr/lib/dotnet/sdk/10.0.100/
+2026-01-01T15:16:04.550146Z 01O 
+2026-01-01T15:16:04.550154Z 01O .NET workloads installed:
+2026-01-01T15:16:04.551683Z 01O There are no installed workloads to display.
+2026-01-01T15:16:04.551689Z 01O Configured to use workload sets when installing new manifests.
+2026-01-01T15:16:04.551691Z 01O No workload sets are installed. Run "dotnet workload restore" to install a workload set.
+2026-01-01T15:16:04.552374Z 01O 
+2026-01-01T15:16:04.552376Z 01O Host:
+2026-01-01T15:16:04.552376Z 01O   Version:      10.0.0
+2026-01-01T15:16:04.552377Z 01O   Architecture: x64
+2026-01-01T15:16:04.552377Z 01O   Commit:       b0f34d51fc
+2026-01-01T15:16:04.552377Z 01O 
+2026-01-01T15:16:04.552394Z 01O .NET SDKs installed:
+2026-01-01T15:16:04.552394Z 01O   10.0.100 [/usr/lib/dotnet/sdk]
+2026-01-01T15:16:04.552394Z 01O 
+2026-01-01T15:16:04.552394Z 01O .NET runtimes installed:
+2026-01-01T15:16:04.552395Z 01O   Microsoft.AspNetCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.AspNetCore.App]
+2026-01-01T15:16:04.552395Z 01O   Microsoft.NETCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.NETCore.App]
+2026-01-01T15:16:04.552395Z 01O 
+2026-01-01T15:16:04.552395Z 01O Other architectures found:
+2026-01-01T15:16:04.552396Z 01O   None
+2026-01-01T15:16:04.552396Z 01O 
+2026-01-01T15:16:04.552396Z 01O Environment variables:
+2026-01-01T15:16:04.552396Z 01O   DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/gitlab-runner/.cache/dotnet_bundle_extract]
+2026-01-01T15:16:04.552397Z 01O   DOTNET_CLI_TELEMETRY_OPTOUT              [1]
+2026-01-01T15:16:04.552397Z 01O 
+2026-01-01T15:16:04.552397Z 01O global.json file:
+2026-01-01T15:16:04.552397Z 01O   Not found
+2026-01-01T15:16:04.552398Z 01O 
+2026-01-01T15:16:04.552398Z 01O Learn more:
+2026-01-01T15:16:04.552398Z 01O   https://aka.ms/dotnet/info
+2026-01-01T15:16:04.552398Z 01O 
+2026-01-01T15:16:04.552398Z 01O Download .NET:
+2026-01-01T15:16:04.552399Z 01O   https://aka.ms/dotnet/download
+2026-01-01T15:16:04.554884Z 01O [32;1m$ dotnet test *.sln --collect:"XPlat Code Coverage" --logger "junit;MethodFormat=Class;FailureBodyFormat=Verbose" || \ # collapsed multi-line command[0;m
+2026-01-01T15:16:05.019358Z 01O   Determining projects to restore...
+2026-01-01T15:16:05.425161Z 01O   Restored /home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/Aiursoft.GeminiBot.csproj (in 178 ms).
+2026-01-01T15:16:05.425170Z 01O   Restored /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/Aiursoft.GeminiBot.Tests.csproj (in 178 ms).
+2026-01-01T15:16:07.400735Z 01O   Aiursoft.GeminiBot -> /home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/bin/Debug/net10.0/gemini-bot.dll
+2026-01-01T15:16:08.068565Z 01O   Successfully created package '/home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/bin/Debug/Aiursoft.GeminiBot.10.0.25.nupkg'.
+2026-01-01T15:16:08.371985Z 01O CSC : warning MSTEST0001: Explicitly enable or disable tests parallelization (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0001) [/home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/Aiursoft.GeminiBot.Tests.csproj]
+2026-01-01T15:16:08.456450Z 01O   Aiursoft.GeminiBot.Tests -> /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll
+2026-01-01T15:16:08.467283Z 01O Test run for /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll (.NETCoreApp,Version=v10.0)
+2026-01-01T15:16:08.498173Z 01O VSTest version 18.0.1 (x64)
+2026-01-01T15:16:08.500464Z 01O 
+2026-01-01T15:16:08.550561Z 01O Starting test execution, please wait...
+2026-01-01T15:16:08.571124Z 01O A total of 1 test files matched the specified pattern.
+2026-01-01T15:16:09.454114Z 01O   Failed ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr [54 ms]
+2026-01-01T15:16:09.454137Z 01O   Error Message:
+2026-01-01T15:16:09.454139Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr threw exception:
+2026-01-01T15:16:09.454141Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:09.454147Z 01O   Stack Trace:
+2026-01-01T15:16:09.454157Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:09.454158Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:09.454158Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 188
+2026-01-01T15:16:09.454158Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:09.454159Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:09.454159Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:09.454160Z 01O 
+2026-01-01T15:16:09.454273Z 01O   Standard Output Messages:
+2026-01-01T15:16:09.454273Z 01O  Prop: MrPipeline, Type: PipelineResult
+2026-01-01T15:16:09.454274Z 01O  Prop: HeadPipeline, Type: PipelineResult
+2026-01-01T15:16:09.454274Z 01O  Prop: Pipeline, Type: PipelineResult
+2026-01-01T15:16:09.454274Z 01O  Prop: Id, Type: Int32
+2026-01-01T15:16:09.454275Z 01O  Prop: IID, Type: Int32
+2026-01-01T15:16:09.454275Z 01O  Prop: ProjectId, Type: Int32
+2026-01-01T15:16:09.454275Z 01O  Prop: SourceProjectId, Type: Int32
+2026-01-01T15:16:09.454275Z 01O  Prop: Title, Type: String
+2026-01-01T15:16:09.454275Z 01O  Prop: SourceBranch, Type: String
+2026-01-01T15:16:09.454276Z 01O  Prop: HasConflicts, Type: Boolean
+2026-01-01T15:16:09.454276Z 01O  Prop: Draft, Type: Boolean
+2026-01-01T15:16:09.454276Z 01O  Prop: WorkInProgress, Type: Boolean
+2026-01-01T15:16:09.454276Z 01O 
+2026-01-01T15:16:09.454277Z 01O 
+2026-01-01T15:16:09.454321Z 01O   Failed ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch [2 ms]
+2026-01-01T15:16:09.454321Z 01O   Error Message:
+2026-01-01T15:16:09.454321Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch threw exception:
+2026-01-01T15:16:09.454349Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:09.454352Z 01O   Stack Trace:
+2026-01-01T15:16:09.454353Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:09.454353Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:09.454353Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 328
+2026-01-01T15:16:09.454354Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:09.454354Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:09.454355Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:09.454355Z 01O 
+2026-01-01T15:16:09.463205Z 01O Results File: /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/TestResults.xml
+2026-01-01T15:16:09.463369Z 01O 
+2026-01-01T15:16:09.465334Z 01O Failed!  - Failed:     2, Passed:     3, Skipped:     0, Total:     5, Duration: 79 ms - Aiursoft.GeminiBot.Tests.dll (net10.0)
+2026-01-01T15:16:09.589873Z 01O 
+2026-01-01T15:16:09.590177Z 01O Attachments:
+2026-01-01T15:16:09.590275Z 01O   /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/8081c8d3-2b4c-474e-9987-f2534b380f66/coverage.cobertura.xml
+2026-01-01T15:16:09.624913Z 01O Test failed. Retrying in 10 seconds...
+2026-01-01T15:16:20.118335Z 01O   Determining projects to restore...
+2026-01-01T15:16:20.324273Z 01O   All projects are up-to-date for restore.
+2026-01-01T15:16:20.555970Z 01O   Aiursoft.GeminiBot -> /home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/bin/Debug/net10.0/gemini-bot.dll
+2026-01-01T15:16:20.857221Z 01O   Aiursoft.GeminiBot.Tests -> /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll
+2026-01-01T15:16:20.865485Z 01O Test run for /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll (.NETCoreApp,Version=v10.0)
+2026-01-01T15:16:20.907573Z 01O VSTest version 18.0.1 (x64)
+2026-01-01T15:16:20.910501Z 01O 
+2026-01-01T15:16:20.958997Z 01O Starting test execution, please wait...
+2026-01-01T15:16:20.979100Z 01O A total of 1 test files matched the specified pattern.
+2026-01-01T15:16:21.858045Z 01O   Failed ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr [54 ms]
+2026-01-01T15:16:21.858056Z 01O   Error Message:
+2026-01-01T15:16:21.858058Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr threw exception:
+2026-01-01T15:16:21.858060Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:21.858062Z 01O   Stack Trace:
+2026-01-01T15:16:21.858063Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:21.858064Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:21.858066Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 188
+2026-01-01T15:16:21.858095Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:21.858095Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:21.858096Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:21.858096Z 01O 
+2026-01-01T15:16:21.858099Z 01O   Standard Output Messages:
+2026-01-01T15:16:21.858099Z 01O  Prop: MrPipeline, Type: PipelineResult
+2026-01-01T15:16:21.858100Z 01O  Prop: HeadPipeline, Type: PipelineResult
+2026-01-01T15:16:21.858100Z 01O  Prop: Pipeline, Type: PipelineResult
+2026-01-01T15:16:21.858100Z 01O  Prop: Id, Type: Int32
+2026-01-01T15:16:21.858100Z 01O  Prop: IID, Type: Int32
+2026-01-01T15:16:21.858100Z 01O  Prop: ProjectId, Type: Int32
+2026-01-01T15:16:21.858101Z 01O  Prop: SourceProjectId, Type: Int32
+2026-01-01T15:16:21.858101Z 01O  Prop: Title, Type: String
+2026-01-01T15:16:21.858101Z 01O  Prop: SourceBranch, Type: String
+2026-01-01T15:16:21.858101Z 01O  Prop: HasConflicts, Type: Boolean
+2026-01-01T15:16:21.858102Z 01O  Prop: Draft, Type: Boolean
+2026-01-01T15:16:21.858102Z 01O  Prop: WorkInProgress, Type: Boolean
+2026-01-01T15:16:21.858102Z 01O 
+2026-01-01T15:16:21.858102Z 01O 
+2026-01-01T15:16:21.858116Z 01O   Failed ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch [2 ms]
+2026-01-01T15:16:21.858117Z 01O   Error Message:
+2026-01-01T15:16:21.858118Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch threw exception:
+2026-01-01T15:16:21.858119Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:21.858125Z 01O   Stack Trace:
+2026-01-01T15:16:21.858140Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:21.858140Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:21.858141Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 328
+2026-01-01T15:16:21.858141Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:21.858142Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:21.858142Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:21.858142Z 01O 
+2026-01-01T15:16:21.866304Z 01O Results File: /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/TestResults.xml
+2026-01-01T15:16:21.866314Z 01O 
+2026-01-01T15:16:21.868399Z 01O Failed!  - Failed:     2, Passed:     3, Skipped:     0, Total:     5, Duration: 77 ms - Aiursoft.GeminiBot.Tests.dll (net10.0)
+2026-01-01T15:16:21.988680Z 01O 
+2026-01-01T15:16:21.988940Z 01O Attachments:
+2026-01-01T15:16:21.989029Z 01O   /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/f8cda20b-f76d-45ed-afbd-2ee5ba22864f/coverage.cobertura.xml
+2026-01-01T15:16:22.016691Z 01O Test failed again. Retrying in 20 seconds...
+2026-01-01T15:16:42.508259Z 01O   Determining projects to restore...
+2026-01-01T15:16:42.718053Z 01O   All projects are up-to-date for restore.
+2026-01-01T15:16:42.946610Z 01O   Aiursoft.GeminiBot -> /home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/bin/Debug/net10.0/gemini-bot.dll
+2026-01-01T15:16:43.237785Z 01O   Aiursoft.GeminiBot.Tests -> /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll
+2026-01-01T15:16:43.246311Z 01O Test run for /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/bin/Debug/net10.0/Aiursoft.GeminiBot.Tests.dll (.NETCoreApp,Version=v10.0)
+2026-01-01T15:16:43.287725Z 01O VSTest version 18.0.1 (x64)
+2026-01-01T15:16:43.290512Z 01O 
+2026-01-01T15:16:43.340149Z 01O Starting test execution, please wait...
+2026-01-01T15:16:43.358518Z 01O A total of 1 test files matched the specified pattern.
+2026-01-01T15:16:44.260704Z 01O   Failed ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr [52 ms]
+2026-01-01T15:16:44.260722Z 01O   Error Message:
+2026-01-01T15:16:44.260728Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr threw exception:
+2026-01-01T15:16:44.260728Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:44.260733Z 01O   Stack Trace:
+2026-01-01T15:16:44.260746Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:44.260747Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:44.260747Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 188
+2026-01-01T15:16:44.260747Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:44.260748Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:44.260748Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:44.260749Z 01O 
+2026-01-01T15:16:44.260835Z 01O   Standard Output Messages:
+2026-01-01T15:16:44.260835Z 01O  Prop: MrPipeline, Type: PipelineResult
+2026-01-01T15:16:44.260836Z 01O  Prop: HeadPipeline, Type: PipelineResult
+2026-01-01T15:16:44.260836Z 01O  Prop: Pipeline, Type: PipelineResult
+2026-01-01T15:16:44.260836Z 01O  Prop: Id, Type: Int32
+2026-01-01T15:16:44.260836Z 01O  Prop: IID, Type: Int32
+2026-01-01T15:16:44.260837Z 01O  Prop: ProjectId, Type: Int32
+2026-01-01T15:16:44.260839Z 01O  Prop: SourceProjectId, Type: Int32
+2026-01-01T15:16:44.260839Z 01O  Prop: Title, Type: String
+2026-01-01T15:16:44.260839Z 01O  Prop: SourceBranch, Type: String
+2026-01-01T15:16:44.260839Z 01O  Prop: HasConflicts, Type: Boolean
+2026-01-01T15:16:44.260840Z 01O  Prop: Draft, Type: Boolean
+2026-01-01T15:16:44.260840Z 01O  Prop: WorkInProgress, Type: Boolean
+2026-01-01T15:16:44.260841Z 01O 
+2026-01-01T15:16:44.260841Z 01O 
+2026-01-01T15:16:44.260876Z 01O   Failed ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch [2 ms]
+2026-01-01T15:16:44.260877Z 01O   Error Message:
+2026-01-01T15:16:44.260879Z 01O    Test method Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch threw exception:
+2026-01-01T15:16:44.260879Z 01O System.ArgumentException: Property set method not found.
+2026-01-01T15:16:44.260885Z 01O   Stack Trace:
+2026-01-01T15:16:44.260895Z 01O      at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, BindingFlags invokeAttr, Binder binder, Object[] index, CultureInfo culture)
+2026-01-01T15:16:44.260918Z 01O    at System.Reflection.RuntimePropertyInfo.SetValue(Object obj, Object value, Object[] index)
+2026-01-01T15:16:44.260919Z 01O    at Aiursoft.GeminiBot.Tests.MergeRequestProcessorTests.ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch() in /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs:line 328
+2026-01-01T15:16:44.260919Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.<>c__DisplayClass55_1.<<ExecuteInternalAsync>b__1>d.MoveNext() in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 424
+2026-01-01T15:16:44.260919Z 01O --- End of stack trace from previous location ---
+2026-01-01T15:16:44.260920Z 01O    at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 442
+2026-01-01T15:16:44.260921Z 01O 
+2026-01-01T15:16:44.269136Z 01O Results File: /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/TestResults.xml
+2026-01-01T15:16:44.269355Z 01O 
+2026-01-01T15:16:44.271101Z 01O Failed!  - Failed:     2, Passed:     3, Skipped:     0, Total:     5, Duration: 74 ms - Aiursoft.GeminiBot.Tests.dll (net10.0)
+2026-01-01T15:16:44.401884Z 01O 
+2026-01-01T15:16:44.402130Z 01O Attachments:
+2026-01-01T15:16:44.402132Z 01O   /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/TestResults/f2688394-dab0-4a0b-8e09-5f90901b1c36/coverage.cobertura.xml
+2026-01-01T15:16:44.435486Z 00O section_end:1767280604:step_script
+2026-01-01T15:16:44.435496Z 00O+[0Ksection_start:1767280604:upload_artifacts_on_failure
+2026-01-01T15:16:44.438809Z 00O+[0K[0K[36;1mUploading artifacts for failed job[0;m[0;m
+2026-01-01T15:16:44.494465Z 01O [32;1mUploading artifacts...[0;m
+2026-01-01T15:16:44.532740Z 01E Runtime platform                                  [0;m  arch[0;m=amd64 os[0;m=linux pid[0;m=125577 revision[0;m=901991dd version[0;m=18.7.0
+2026-01-01T15:16:44.534730Z 01E ./**/TestResults.xml: found 1 matching artifact files and directories[0;m 
+2026-01-01T15:16:44.534747Z 01E [0;33mWARNING: ./Cobertura.xml: no matching files. Ensure that the artifact path is relative to the working directory (/home/gitlab-runner/builds/geminibot/40694)[0;m 
+2026-01-01T15:16:44.613356Z 01E Uploading artifacts as "archive" to coordinator... 201 Created[0;m  correlation_id[0;m=01KDX23XBQ13F4MQF5M26JBQHB id[0;m=233805 responseStatus[0;m=201 Created token[0;m=64_BkbM1E
+2026-01-01T15:16:44.658481Z 01O [32;1mUploading artifacts...[0;m
+2026-01-01T15:16:44.694242Z 01E Runtime platform                                  [0;m  arch[0;m=amd64 os[0;m=linux pid[0;m=125610 revision[0;m=901991dd version[0;m=18.7.0
+2026-01-01T15:16:44.695777Z 01E ./**/TestResults.xml: found 1 matching artifact files and directories[0;m 
+2026-01-01T15:16:44.764165Z 01E Uploading artifacts as "junit" to coordinator... 201 Created[0;m  correlation_id[0;m=01KDX23XGSBXCTQJW2BW3Q9PC5 id[0;m=233805 responseStatus[0;m=201 Created token[0;m=64_BkbM1E
+2026-01-01T15:16:44.808739Z 01O [32;1mUploading artifacts...[0;m
+2026-01-01T15:16:44.845747Z 01E Runtime platform                                  [0;m  arch[0;m=amd64 os[0;m=linux pid[0;m=125648 revision[0;m=901991dd version[0;m=18.7.0
+2026-01-01T15:16:44.845796Z 01E [0;33mWARNING: ./Cobertura.xml: no matching files. Ensure that the artifact path is relative to the working directory (/home/gitlab-runner/builds/geminibot/40694)[0;m 
+2026-01-01T15:16:44.845802Z 01E [31;1mERROR: No files to upload                         [0;m 
+2026-01-01T15:16:44.848794Z 00O section_end:1767280604:upload_artifacts_on_failure
+2026-01-01T15:16:44.848798Z 00O+[0Ksection_start:1767280604:cleanup_file_variables
+2026-01-01T15:16:44.848854Z 00O+[0K[0K[36;1mCleaning up project directory and file based variables[0;m[0;m
+2026-01-01T15:16:44.863082Z 00O section_end:1767280604:cleanup_file_variables
+2026-01-01T15:16:44.863103Z 00O+[0K
+2026-01-01T15:16:44.865703Z 00O [31;1mERROR: Job failed: exit status 1[0;m
+
+=== End of Job Log ===
+
+
+
+=== Job: lint (Stage: lint) ===
+2026-01-01T15:16:03.638164Z 00O [0KRunning with gitlab-runner 18.7.0 (901991dd)[0;m
+2026-01-01T15:16:03.638174Z 00O [0K  on 97621312b1dd wjuYPY19y, system ID: s_644bf7a70601[0;m
+2026-01-01T15:16:03.638189Z 00O section_start:1767280563:prepare_executor
+2026-01-01T15:16:03.638190Z 00O+[0K[0K[36;1mPreparing the "shell" executor[0;m[0;m
+2026-01-01T15:16:03.640938Z 00O [0KUsing Shell (bash) executor...[0;m
+2026-01-01T15:16:03.640943Z 00O section_end:1767280563:prepare_executor
+2026-01-01T15:16:03.640944Z 00O+[0Ksection_start:1767280563:prepare_script
+2026-01-01T15:16:03.641095Z 00O+[0K[0K[36;1mPreparing environment[0;m[0;m
+2026-01-01T15:16:03.650157Z 01O Running on 97621312b1dd...
+2026-01-01T15:16:03.652131Z 00O section_end:1767280563:prepare_script
+2026-01-01T15:16:03.652135Z 00O+[0Ksection_start:1767280563:get_sources
+2026-01-01T15:16:03.652338Z 00O+[0K[0K[36;1mGetting source from Git repository[0;m[0;m
+2026-01-01T15:16:03.676053Z 01O [32;1mGitaly correlation ID: 01KDX22N8HKP9QCY069B7EBGED[0;m
+2026-01-01T15:16:03.679421Z 01O [32;1mFetching changes with git depth set to 20...[0;m
+2026-01-01T15:16:03.680952Z 01O Initialized empty Git repository in /home/gitlab-runner/builds/geminibot/40694/.git/
+2026-01-01T15:16:03.682268Z 01O [32;1mCreated fresh repository.[0;m
+2026-01-01T15:16:03.837588Z 01O [32;1mChecking out 6838dd8e as detached HEAD (ref is fix-issue-6)...[0;m
+2026-01-01T15:16:03.844183Z 01O [32;1mSkipping Git submodules setup[0;m
+2026-01-01T15:16:03.845013Z 00O section_end:1767280563:get_sources
+2026-01-01T15:16:03.845014Z 00O+[0Ksection_start:1767280563:step_script
+2026-01-01T15:16:03.845272Z 00O+[0K[0K[36;1mExecuting "step_script" stage of the job script[0;m[0;m
+2026-01-01T15:16:03.858080Z 01O [32;1m$ export DOTNET_CLI_TELEMETRY_OPTOUT=1[0;m
+2026-01-01T15:16:03.858097Z 01O [32;1m$ export PATH=$PATH:$HOME/.dotnet/tools[0;m
+2026-01-01T15:16:03.858098Z 01O [32;1m$ which jb || dotnet tool install JetBrains.ReSharper.GlobalTools --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-01T15:16:03.858625Z 01O /home/gitlab-runner/.dotnet/tools/jb
+2026-01-01T15:16:03.859004Z 01O [32;1m$ which reportgenerator || dotnet tool install dotnet-reportgenerator-globaltool --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-01T15:16:03.859325Z 01O /home/gitlab-runner/.dotnet/tools/reportgenerator
+2026-01-01T15:16:03.859512Z 01O [32;1m$ echo "Hostname: $(hostname)"[0;m
+2026-01-01T15:16:03.860187Z 01O Hostname: 97621312b1dd
+2026-01-01T15:16:03.860200Z 01O [32;1m$ dotnet --info[0;m
+2026-01-01T15:16:03.925910Z 01O .NET SDK:
+2026-01-01T15:16:03.925918Z 01O  Version:           10.0.100
+2026-01-01T15:16:03.925919Z 01O  Commit:            b0f34d51fc
+2026-01-01T15:16:03.945243Z 01O  Workload version:  10.0.100-manifests.4eab3e0f
+2026-01-01T15:16:03.945568Z 01O  MSBuild version:   18.0.2+b0f34d51f
+2026-01-01T15:16:03.945576Z 01O 
+2026-01-01T15:16:03.945837Z 01O Runtime Environment:
+2026-01-01T15:16:03.946102Z 01O  OS Name:     ubuntu
+2026-01-01T15:16:03.946104Z 01O  OS Version:  25.10
+2026-01-01T15:16:03.946933Z 01O  OS Platform: Linux
+2026-01-01T15:16:03.951972Z 01O  RID:         ubuntu.25.10-x64
+2026-01-01T15:16:03.951973Z 01O  Base Path:   /usr/lib/dotnet/sdk/10.0.100/
+2026-01-01T15:16:03.951978Z 01O 
+2026-01-01T15:16:03.951985Z 01O .NET workloads installed:
+2026-01-01T15:16:03.953291Z 01O There are no installed workloads to display.
+2026-01-01T15:16:03.953318Z 01O Configured to use workload sets when installing new manifests.
+2026-01-01T15:16:03.953319Z 01O No workload sets are installed. Run "dotnet workload restore" to install a workload set.
+2026-01-01T15:16:03.953988Z 01O 
+2026-01-01T15:16:03.953989Z 01O Host:
+2026-01-01T15:16:03.953989Z 01O   Version:      10.0.0
+2026-01-01T15:16:03.953989Z 01O   Architecture: x64
+2026-01-01T15:16:03.953990Z 01O   Commit:       b0f34d51fc
+2026-01-01T15:16:03.953990Z 01O 
+2026-01-01T15:16:03.953990Z 01O .NET SDKs installed:
+2026-01-01T15:16:03.953990Z 01O   10.0.100 [/usr/lib/dotnet/sdk]
+2026-01-01T15:16:03.954006Z 01O 
+2026-01-01T15:16:03.954006Z 01O .NET runtimes installed:
+2026-01-01T15:16:03.954006Z 01O   Microsoft.AspNetCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.AspNetCore.App]
+2026-01-01T15:16:03.954006Z 01O   Microsoft.NETCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.NETCore.App]
+2026-01-01T15:16:03.954007Z 01O 
+2026-01-01T15:16:03.954007Z 01O Other architectures found:
+2026-01-01T15:16:03.954007Z 01O   None
+2026-01-01T15:16:03.954007Z 01O 
+2026-01-01T15:16:03.954007Z 01O Environment variables:
+2026-01-01T15:16:03.954008Z 01O   DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/gitlab-runner/.cache/dotnet_bundle_extract]
+2026-01-01T15:16:03.954008Z 01O   DOTNET_CLI_TELEMETRY_OPTOUT              [1]
+2026-01-01T15:16:03.954008Z 01O 
+2026-01-01T15:16:03.954008Z 01O global.json file:
+2026-01-01T15:16:03.954008Z 01O   Not found
+2026-01-01T15:16:03.954009Z 01O 
+2026-01-01T15:16:03.954009Z 01O Learn more:
+2026-01-01T15:16:03.954009Z 01O   https://aka.ms/dotnet/info
+2026-01-01T15:16:03.954009Z 01O 
+2026-01-01T15:16:03.954009Z 01O Download .NET:
+2026-01-01T15:16:03.954010Z 01O   https://aka.ms/dotnet/download
+2026-01-01T15:16:03.957136Z 01O [32;1m$ chmod +x ./lint.sh[0;m
+2026-01-01T15:16:03.957961Z 01O [32;1m$ ./lint.sh[0;m
+2026-01-01T15:16:03.958913Z 01O Checking for JetBrains ReSharper Global Tools...
+2026-01-01T15:16:03.958956Z 01O jb is already installed.
+2026-01-01T15:16:03.958958Z 01O Restoring dependencies...
+2026-01-01T15:16:04.395563Z 01O   Determining projects to restore...
+2026-01-01T15:16:04.863856Z 01O   Restored /home/gitlab-runner/builds/geminibot/40694/tests/Aiursoft.GeminiBot.Tests/Aiursoft.GeminiBot.Tests.csproj (in 268 ms).
+2026-01-01T15:16:04.863866Z 01O   Restored /home/gitlab-runner/builds/geminibot/40694/src/Aiursoft.GeminiBot/Aiursoft.GeminiBot.csproj (in 268 ms).
+2026-01-01T15:16:04.882295Z 01O Running ReSharper Code Inspection...
+2026-01-01T15:16:21.280033Z 01O Filtering known false positives...
+2026-01-01T15:16:21.285357Z 01O [0;31mLinting FAILED![0m
+2026-01-01T15:16:21.285363Z 01O Issues found:
+2026-01-01T15:16:21.294941Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 85 | Reason: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
+2026-01-01T15:16:21.303682Z 01O File: src/Aiursoft.GeminiBot/Models/MRToProcess.cs | Line: Offset 0-47 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.310462Z 01O File: src/Aiursoft.GeminiBot/Services/GeminiCliService.cs | Line: Offset 0-32 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.317812Z 01O File: src/Aiursoft.GeminiBot/Services/MergeRequestProcessor.cs | Line: Offset 0-32 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.324211Z 01O File: src/Aiursoft.GeminiBot/Services/MergeRequestProcessor.cs | Line: 2 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.329676Z 01O File: src/Aiursoft.GeminiBot/Services/MergeRequestProcessor.cs | Line: 14 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.336624Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: Offset 0-32 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.341804Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 2 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.347931Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 3 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.353619Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 12 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.358983Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 15 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.364391Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 17 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.369495Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 20 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-01T15:16:21.376103Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestProcessorTests.cs | Line: 201 | Reason: Local variable 'botForkRepository' is never used
+2026-01-01T15:16:21.378054Z 00O section_end:1767280581:step_script
+2026-01-01T15:16:21.378059Z 00O+[0Ksection_start:1767280581:upload_artifacts_on_failure
+2026-01-01T15:16:21.378256Z 00O+[0K[0K[36;1mUploading artifacts for failed job[0;m[0;m
+2026-01-01T15:16:21.429380Z 01O [32;1mUploading artifacts...[0;m
+2026-01-01T15:16:21.467684Z 01E Runtime platform                                  [0;m  arch[0;m=amd64 os[0;m=linux pid[0;m=109735 revision[0;m=901991dd version[0;m=18.7.0
+2026-01-01T15:16:21.467921Z 01E ./analyze_output.xml: found 1 matching artifact files and directories[0;m 
+2026-01-01T15:16:21.541508Z 01E Uploading artifacts as "archive" to coordinator... 201 Created[0;m  correlation_id[0;m=01KDX236TWMAPGWX96W3SPF0VD id[0;m=233804 responseStatus[0;m=201 Created token[0;m=64_E_aqmt
+2026-01-01T15:16:21.545949Z 00O section_end:1767280581:upload_artifacts_on_failure
+2026-01-01T15:16:21.545954Z 00O+[0Ksection_start:1767280581:cleanup_file_variables
+2026-01-01T15:16:21.546024Z 00O+[0K[0K[36;1mCleaning up project directory and file based variables[0;m[0;m
+2026-01-01T15:16:21.561112Z 00O section_end:1767280581:cleanup_file_variables
+2026-01-01T15:16:21.561152Z 00O+[0K
+2026-01-01T15:16:21.561227Z 00O [31;1mERROR: Job failed: exit status 1[0;m
+
+=== End of Job Log ===
+
+
+=== END OF FAILURE LOGS ===
+
+Please read git log, analyze the failure logs, identify the root cause, and make the necessary code changes to fix the build/test failures.
+
+Don't forget to run git commit after making changes.

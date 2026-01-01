@@ -1,4 +1,3 @@
-using Aiursoft.CSTools.Services;
 using Aiursoft.GeminiBot.Configuration;
 using Aiursoft.GeminiBot.Services.Abstractions;
 using Microsoft.Extensions.Logging;

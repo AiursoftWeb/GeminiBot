@@ -51,7 +51,7 @@ public class MergeRequestProcessorTests
     private List<GitLabMergeRequestDto> _gitLabMrList = new();
     private GitLabUser _botUser = new();
     private List<GitLabMergeRequestDto> _botMrList = new();
-    private JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     [TestInitialize]
     public void SetUp()
@@ -82,52 +82,52 @@ public class MergeRequestProcessorTests
         _loggerMock = new Mock<ILogger<MergeRequestProcessor>>();
 
         // Mock HttpWrapper by mocking HttpClient
-        var handler = new FakeHttpMessageHandler(async (req) =>
+        var handler = new FakeHttpMessageHandler((req) =>
         {
             var url = req.RequestUri!.ToString();
             if (req.Method == HttpMethod.Get && url.Contains("merge_requests") && url.Contains("scope=assigned_to_me"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_gitLabMrList))
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.Contains("merge_requests") && url.Contains("discussions"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("[]")
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.Contains("merge_requests") && url.Contains("commits"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("[]")
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.EndsWith("/api/v4/user"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_botUser))
-                };
+                });
             }
             if (req.Method == HttpMethod.Put && url.Contains("merge_requests/") && url.Contains("assignee_ids="))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("{}")
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.Contains("source_branch=fix-mr-1"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_botMrList))
-                };
+                });
             }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         });
 
         var client = new HttpClient(handler);
@@ -137,13 +137,6 @@ public class MergeRequestProcessorTests
     [TestMethod]
     public async Task ProcessMergeRequestsAsync_OthersMr_ForksAndCreatesNewMr()
     {
-        // Debug reflection
-        var props = typeof(DetailedMergeRequest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        foreach (var p in props)
-        {
-            Console.WriteLine($"Prop: {p.Name}, Type: {p.PropertyType.Name}");
-        }
-
         // Arrange
         var server = new Server
         {
@@ -172,38 +165,15 @@ public class MergeRequestProcessorTests
         var detailedMr = JsonSerializer.Deserialize<DetailedMergeRequest>(@"
         {
             ""HasConflicts"": false,
-            ""Pipeline"": { ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }
+            ""MrPipeline"": { ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }
         }", _jsonOptions)!;
 
-        // Force set if needed using reflection
-        if (detailedMr.Pipeline == null)
+        var repository = new Repository
         {
-            var pipelineProp = typeof(DetailedMergeRequest).GetProperty("Pipeline");
-            if (pipelineProp != null)
-            {
-                var pipelineObj = JsonSerializer.Deserialize(
-                    @"{ ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }", 
-                    pipelineProp.PropertyType, 
-                    _jsonOptions);
-                pipelineProp.SetValue(detailedMr, pipelineObj);
-            }
-        }
-
-        Console.WriteLine($"DetailedMr Pipeline after reflection: {detailedMr.Pipeline?.Status}");
-
-        var repository = JsonSerializer.Deserialize<Repository>(@"
-        {
-            ""CloneUrl"": ""https://gitlab.com/other-user/repo.git"",
-            ""Name"": ""repo"",
-            ""Owner"": { ""Login"": ""other-user"" }
-        }", _jsonOptions)!;
-
-        var botForkRepository = JsonSerializer.Deserialize<Repository>(@"
-        {
-            ""CloneUrl"": ""https://gitlab.com/bot-user/repo.git"",
-            ""Name"": ""repo"",
-            ""Owner"": { ""Login"": ""bot-user"" }
-        }", _jsonOptions)!;
+            CloneUrl = "https://gitlab.com/other-user/repo.git",
+            Name = "repo",
+            Owner = new User { Login = "other-user" }
+        };
 
         var failedJob = JsonSerializer.Deserialize<PipelineJob>(@"
         {
@@ -312,29 +282,15 @@ public class MergeRequestProcessorTests
         var detailedMr = JsonSerializer.Deserialize<DetailedMergeRequest>(@"
         {
             ""HasConflicts"": false,
-            ""Pipeline"": { ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }
+            ""MrPipeline"": { ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }
         }", _jsonOptions)!;
 
-        // Force set if needed using reflection
-        if (detailedMr.Pipeline == null)
+        var repository = new Repository
         {
-            var pipelineProp = typeof(DetailedMergeRequest).GetProperty("Pipeline");
-            if (pipelineProp != null)
-            {
-                var pipelineObj = JsonSerializer.Deserialize(
-                    @"{ ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }", 
-                    pipelineProp.PropertyType, 
-                    _jsonOptions);
-                pipelineProp.SetValue(detailedMr, pipelineObj);
-            }
-        }
-
-        var repository = JsonSerializer.Deserialize<Repository>(@"
-        {
-            ""CloneUrl"": ""https://gitlab.com/bot-user/repo.git"",
-            ""Name"": ""repo"",
-            ""Owner"": { ""Login"": ""bot-user"" }
-        }", _jsonOptions)!;
+            CloneUrl = "https://gitlab.com/bot-user/repo.git",
+            Name = "repo",
+            Owner = new User { Login = "bot-user" }
+        };
 
         var failedJob = JsonSerializer.Deserialize<PipelineJob>(@"
         {

@@ -1,4 +1,3 @@
-using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
 
 namespace Aiursoft.GeminiBot.Models;
