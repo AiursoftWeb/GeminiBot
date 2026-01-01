@@ -59,11 +59,12 @@ public class MergeRequestProcessor
         {
             IReadOnlyCollection<MergeRequestSearchResult> mergeRequests;
             var targetBranches = new Dictionary<int, string>();
+            var gitLabMrs = new List<GitLabMergeRequestDto>();
             if (server.Provider == "GitLab")
             {
                 _logger.LogInformation("Checking merge requests assigned to {UserName}...", server.UserName);
                 var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=assigned_to_me&state=opened&per_page=100";
-                var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
+                gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
 
                 foreach (var m in gitLabMrs)
                 {
@@ -105,6 +106,9 @@ public class MergeRequestProcessor
                 var hasNewHumanReview = await ShouldProcessDueToReviewAsync(server, mr);
                 var pipelineFailed = details.Pipeline?.Status == "failed";
                 var targetBranch = targetBranches.GetValueOrDefault(mr.IID, "main");
+                var authorName = server.Provider == "GitLab" 
+                    ? gitLabMrs.FirstOrDefault(m => m.Iid == mr.IID)?.Author.Username 
+                    : null;
 
                 if (hasConflicts || hasNewHumanReview || pipelineFailed)
                 {
@@ -118,7 +122,8 @@ public class MergeRequestProcessor
                         HasConflicts = hasConflicts,
                         HasNewHumanReview = hasNewHumanReview,
                         PipelineFailed = pipelineFailed,
-                        TargetBranch = targetBranch
+                        TargetBranch = targetBranch,
+                        AuthorName = authorName
                     });
                 }
                 else
@@ -159,6 +164,7 @@ public class MergeRequestProcessor
         public bool HasNewHumanReview { get; init; }
         public bool PipelineFailed { get; init; }
         public string TargetBranch { get; init; } = "main";
+        public string? AuthorName { get; init; }
     }
 
     /// <summary>
@@ -233,6 +239,15 @@ public class MergeRequestProcessor
 
             // Get the source branch from the MR
             var branchName = mr.SourceBranch ?? throw new InvalidOperationException($"MR #{mr.IID} has no source branch");
+            var pushBranchName = branchName;
+            var isOthersMr = server.Provider == "GitLab" && !string.Equals(item.AuthorName, server.UserName, StringComparison.OrdinalIgnoreCase);
+
+            if (isOthersMr)
+            {
+                pushBranchName = $"fix-mr-{mr.IID}";
+                _logger.LogInformation("MR #{IID} was not created by the bot (Author: {Author}). Will push to a new branch {PushBranch} in bot's fork.",
+                    mr.IID, item.AuthorName, pushBranchName);
+            }
 
             await _workspaceManager.ResetRepo(
                 workPath,
@@ -261,7 +276,7 @@ public class MergeRequestProcessor
 
             // Check for both pending changes and unpushed commits
             var hasPendingChanges = await _workspaceManager.PendingCommit(workPath);
-            var isAheadOfOrigin = await IsAheadOfOrigin(workPath, branchName);
+            var isAheadOfOrigin = !isOthersMr && await IsAheadOfOrigin(workPath, branchName);
 
             if (!hasPendingChanges && !isAheadOfOrigin)
             {
@@ -272,9 +287,9 @@ public class MergeRequestProcessor
             // Commit pending changes if any exist
             if (hasPendingChanges)
             {
-                _logger.LogInformation("MR #{IID} has pending changes. Committing...", mr.IID);
+                _logger.LogInformation("MR #{IID} has pending changes. Committing to {Branch}...", mr.IID, pushBranchName);
 
-                var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, branchName);
+                var saved = await _workspaceManager.CommitToBranch(workPath, commitMessage, pushBranchName);
                 if (!saved)
                 {
                     _logger.LogError("Failed to commit changes for MR #{IID}", mr.IID);
@@ -287,8 +302,37 @@ public class MergeRequestProcessor
             }
 
             // Push to the MR's source branch
-            var pushPath = _versionControl.GetPushPath(server, repository);
-            await _workspaceManager.Push(workPath, branchName, pushPath, force: true);
+            if (isOthersMr)
+            {
+                _logger.LogInformation("MR #{IID} - Creating bot fork and new MR...", mr.IID);
+
+                // 1. Ensure target repo is forked to bot's namespace
+                var targetRepository = await _versionControl.GetRepository(
+                    server.EndPoint,
+                    mr.ProjectId.ToString(),
+                    string.Empty,
+                    server.Token);
+
+                await EnsureRepositoryForkedAsync(server, targetRepository);
+
+                // 2. Push to bot's fork
+                var botForkRepository = await _versionControl.GetRepository(
+                    server.EndPoint,
+                    mr.ProjectId.ToString(),
+                    server.UserName,
+                    server.Token);
+
+                var pushPath = _versionControl.GetPushPath(server, botForkRepository);
+                await _workspaceManager.Push(workPath, pushBranchName, pushPath, force: true);
+
+                // 3. Create a new MR and manage assignments
+                await CreateNewMergeRequestAsync(server, targetRepository, mr, item.TargetBranch, pushBranchName);
+            }
+            else
+            {
+                var pushPath = _versionControl.GetPushPath(server, repository);
+                await _workspaceManager.Push(workPath, branchName, pushPath, force: true);
+            }
 
             _logger.LogInformation("Successfully fixed and pushed changes for MR #{IID}", mr.IID);
         }
@@ -297,6 +341,86 @@ public class MergeRequestProcessor
             _logger.LogError(ex, "Error fixing MR #{IID}", mr.IID);
         }
     }
+
+    private async Task EnsureRepositoryForkedAsync(Server server, Repository repository)
+    {
+        var ownerLogin = repository.Owner?.Login ?? throw new InvalidOperationException("Repository owner is null");
+        var repoName = repository.Name ?? throw new InvalidOperationException("Repository name is null");
+
+        if (!await _versionControl.RepoExists(server.EndPoint, server.UserName, repoName, server.Token))
+        {
+            _logger.LogInformation("Forking repository {Org}/{Repo}...", ownerLogin, repoName);
+            await _versionControl.ForkRepo(server.EndPoint, ownerLogin, repoName, server.Token);
+
+            // Wait for fork to complete
+            await Task.Delay(_options.ForkWaitDelayMs);
+
+            while (!await _versionControl.RepoExists(server.EndPoint, server.UserName, repoName, server.Token))
+            {
+                _logger.LogInformation("Waiting for fork to complete...");
+                await Task.Delay(_options.ForkWaitDelayMs);
+            }
+        }
+    }
+
+    private async Task CreateNewMergeRequestAsync(Server server, Repository targetRepository, MergeRequestSearchResult oldMr, string targetBranch, string botBranchName)
+    {
+        var ownerLogin = targetRepository.Owner?.Login ?? throw new InvalidOperationException("Repository owner is null");
+        var repoName = targetRepository.Name ?? throw new InvalidOperationException("Repository name is null");
+
+        var title = $"[Bot Fix] {oldMr.Title} (Replacement for #{oldMr.IID})";
+        var body = $@"
+This merge request was automatically generated by Gemini Bot to replace #{oldMr.IID}.
+The bot was assigned to #{oldMr.IID} but didn't have permission to push to the original branch.
+
+Original MR: #{oldMr.IID}
+
+## Changes
+Automated fixes for the original MR.";
+
+        _logger.LogInformation("Creating replacement MR for #{IID} from branch {Branch}...", oldMr.IID, botBranchName);
+        await _versionControl.CreatePullRequest(
+            server.EndPoint,
+            ownerLogin,
+            repoName,
+            $"{server.UserName}:{botBranchName}",
+            targetBranch,
+            title,
+            body,
+            server.Token);
+
+        if (server.Provider == "GitLab")
+        {
+            try
+            {
+                // 1. Get Bot User ID
+                var userUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/user";
+                var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
+
+                // 2. Unassign from old MR
+                _logger.LogInformation("Unassigning bot from original MR #{IID}...", oldMr.IID);
+                var updateOldMrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests/{oldMr.IID}?assignee_ids=";
+                await _httpWrapper.SendHttpAndGetJson<object>(updateOldMrUrl, HttpMethod.Put, server.Token);
+
+                // 3. Assign to new MR
+                var mrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests?state=opened&source_branch={botBranchName}";
+                var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
+                var newMr = mrs.FirstOrDefault();
+
+                if (newMr != null)
+                {
+                    _logger.LogInformation("Assigning bot to new MR #{IID}...", newMr.Iid);
+                    var updateNewMrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests/{newMr.Iid}?assignee_ids={user.Id}";
+                    await _httpWrapper.SendHttpAndGetJson<object>(updateNewMrUrl, HttpMethod.Put, server.Token);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to manage MR assignments in GitLab");
+            }
+        }
+    }
+
 
     /// <summary>
     /// Download failure logs from all failed jobs in the pipeline.
@@ -553,6 +677,9 @@ Don't forget to run git commit after making changes.";
 
     private class GitLabUser
     {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
         [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
     }
@@ -576,6 +703,9 @@ Don't forget to run git commit after making changes.";
 
         [JsonPropertyName("target_branch")]
         public string TargetBranch { get; set; } = string.Empty;
+
+        [JsonPropertyName("author")]
+        public GitLabUser Author { get; set; } = new();
     }
 
     /// <summary>
