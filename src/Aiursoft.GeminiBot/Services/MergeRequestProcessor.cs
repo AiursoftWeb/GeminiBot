@@ -1,5 +1,4 @@
 using Aiursoft.GeminiBot.Models;
-using Aiursoft.GeminiBot.Services.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services;
 using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
@@ -238,7 +237,7 @@ public class MergeRequestProcessor
     }
 
     private string BuildConflictPrompt(MergeRequestSearchResult mr, string targetBranch) => $@"Merge conflicts between '{mr.SourceBranch}' and '{targetBranch}' for #{mr.IID}: {mr.Title}...";
-    private string BuildFailurePrompt(MergeRequestSearchResult mr, DetailedMergeRequest details, string failureLogs) => $@"CI/CD FAILED for #{mr.IID}: {mr.Title}. Pipeline: {details.Pipeline?.WebUrl}...";
+    private string BuildFailurePrompt(MergeRequestSearchResult mr, DetailedMergeRequest details, string failureLogs) => $@"CI/CD FAILED for #{mr.IID}: {mr.Title}. Pipeline: {details.Pipeline?.WebUrl}. Logs: {failureLogs}";
     private string BuildReviewPrompt(MergeRequestSearchResult mr, string reviewNotes) => $@"Human feedback for #{mr.IID}: {mr.Title}. Notes: {reviewNotes}...";
 
     private async Task<bool> ShouldProcessDueToReviewAsync(Server server, MergeRequestSearchResult mr)
@@ -271,5 +270,5 @@ public class MergeRequestProcessor
         catch { return string.Empty; }
     }
 
-    private class GitLabUser { public int Id { get; set; } public string Username { get; set; } = string.Empty; }
+    private class GitLabUser { public int Id { get; set; } }
 }
