@@ -1,3 +1,4 @@
+using Aiursoft.Canon;
 using Aiursoft.Dotlang.AspNetTranslate.Services;
 using Aiursoft.GeminiBot.Configuration;
 using Microsoft.Extensions.Logging;
@@ -12,15 +13,18 @@ namespace Aiursoft.GeminiBot.Services;
 public class LocalizationService
 {
     private readonly TranslateEntry _translateEntry;
+    private readonly RetryEngine _retryEngine;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<LocalizationService> _logger;
 
     public LocalizationService(
         TranslateEntry translateEntry,
+        RetryEngine retryEngine,
         IOptions<GeminiBotOptions> options,
         ILogger<LocalizationService> logger)
     {
         _translateEntry = translateEntry;
+        _retryEngine = retryEngine;
         _options = options.Value;
         _logger = logger;
     }
@@ -90,12 +94,15 @@ public class LocalizationService
 
             try
             {
-                await LocalizeProjectDirectoryAsync(projectDir);
+                await _retryEngine.RunWithRetry(async _ =>
+                {
+                    await LocalizeProjectDirectoryAsync(projectDir);
+                }, attempts: 3);
                 localizedCount++;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during localization of project: {CsprojFile}", csprojFile);
+                _logger.LogError(ex, "Error during localization of project: {CsprojFile} after 3 attempts", csprojFile);
                 // Continue with other projects even if one fails
             }
         }

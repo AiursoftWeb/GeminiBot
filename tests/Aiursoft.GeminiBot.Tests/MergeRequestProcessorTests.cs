@@ -59,6 +59,7 @@ public class MergeRequestProcessorTests
         
         _localizationServiceMock = new Mock<LocalizationService>(
             null!, // TranslateEntry
+            null!, // RetryEngine
             _options,
             new Mock<ILogger<LocalizationService>>().Object);
             
