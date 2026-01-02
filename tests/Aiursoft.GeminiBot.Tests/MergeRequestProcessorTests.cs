@@ -218,15 +218,21 @@ public class MergeRequestProcessorTests
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "1", ""));
 
-        var processor = new MergeRequestProcessor(
-            _localizationServiceMock.Object,
+        var workflowEngine = new BotWorkflowEngine(
             _versionControlMock.Object,
             _workspaceManagerMock.Object,
-            _httpWrapper,
             _geminiCliServiceMock.Object,
+            _localizationServiceMock.Object,
             _commandServiceMock.Object,
             _options,
+            new Mock<ILogger<BotWorkflowEngine>>().Object);
+
+        var processor = new MergeRequestProcessor(
+            _versionControlMock.Object,
+            workflowEngine,
+            _httpWrapper,
             _loggerMock.Object);
+
 
         // Act
         var result = await processor.ProcessMergeRequestsAsync(server);
@@ -331,14 +337,19 @@ public class MergeRequestProcessorTests
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "1", ""));
 
-        var processor = new MergeRequestProcessor(
-            _localizationServiceMock.Object,
+        var workflowEngine = new BotWorkflowEngine(
             _versionControlMock.Object,
             _workspaceManagerMock.Object,
-            _httpWrapper,
             _geminiCliServiceMock.Object,
+            _localizationServiceMock.Object,
             _commandServiceMock.Object,
             _options,
+            new Mock<ILogger<BotWorkflowEngine>>().Object);
+
+        var processor = new MergeRequestProcessor(
+            _versionControlMock.Object,
+            workflowEngine,
+            _httpWrapper,
             _loggerMock.Object);
 
         // Act
