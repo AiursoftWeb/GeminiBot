@@ -1,5 +1,5 @@
-using Aiursoft.CSTools.Services;
 using Aiursoft.GeminiBot.Configuration;
+using Aiursoft.GeminiBot.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,12 +11,12 @@ namespace Aiursoft.GeminiBot.Services;
 /// </summary>
 public class GeminiCliService
 {
-    private readonly CommandService _commandService;
+    private readonly IGeminiCommandService _commandService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<GeminiCliService> _logger;
 
     public GeminiCliService(
-        CommandService commandService,
+        IGeminiCommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<GeminiCliService> logger)
     {
@@ -32,7 +32,7 @@ public class GeminiCliService
     /// <param name="taskDescription">The task description to pass to Gemini CLI.</param>
     /// <param name="hideGitFolder">If true, hides .git folder to prevent Gemini from manipulating git. If false, allows Gemini to see git history.</param>
     /// <returns>True if Gemini CLI completed successfully, false otherwise.</returns>
-    public async Task<bool> InvokeGeminiCliAsync(string workPath, string taskDescription, bool hideGitFolder)
+    public virtual async Task<bool> InvokeGeminiCliAsync(string workPath, string taskDescription, bool hideGitFolder)
     {
         string? tempFile = null;
         var gitPath = Path.Combine(workPath, ".git");
