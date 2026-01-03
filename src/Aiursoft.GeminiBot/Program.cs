@@ -56,6 +56,7 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddTransient<HttpWrapper>();
             services.AddTransient<IGeminiWorkspaceManager, GeminiWorkspaceManager>();
             services.AddTransient<IGeminiCommandService, GeminiCommandService>();
+            services.AddTransient<BotWorkflowEngine>();
             services.AddTransient<WorkspaceManager>();
             services.AddTransient<CommandService>();
             services.AddTransient<IssueProcessor>();

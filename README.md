@@ -6,16 +6,38 @@
 [![NuGet version (aiursoft.geminibot)](https://img.shields.io/nuget/v/Aiursoft.geminibot.svg)](https://www.nuget.org/packages/Aiursoft.geminibot/)
 [![Man hours](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.svg)](https://manhours.aiursoft.com/r/gitlab.aiursoft.com/aiursoft/geminibot.html)
 
-Gemini Bot:
+## How it works
 
-* Auto start a merge request when an issue is created and assigned.
-* Auto fix failed merge requests by analyzing the pipeline logs with Gemini API.
-* Auto fix merge requests that have been reviewed with change requests.
+Gemini Bot is designed to autonomously manage the entire lifecycle of software development tasks on GitLab/GitHub. It follows a strictly prioritized workflow to ensure existing work is maintained before starting new tasks.
 
-To use Gemini Bot, you can:
+### 1. Workflow Priorities
 
-* Assign an issue to it.
-* Send comments to it's merge requests.
+The bot operates in two main phases:
+
+#### Phase 1: Merge Request Maintenance (Highest Priority)
+Before looking for new work, the bot ensures its existing contributions are healthy. It scans for Merge Requests assigned to it or created by it that need attention:
+- **Conflict Resolution**: If an MR has merge conflicts, the bot merges the target branch and invokes Gemini to resolve the conflicts.
+- **Addressing Reviews**: If a human reviewer provides feedback (discussions), the bot reads the feedback and asks Gemini to implement the requested changes.
+- **Fixing Pipelines**: If the CI/CD pipeline fails, the bot automatically downloads the failure logs from all failed jobs and asks Gemini to fix the root cause.
+
+#### Phase 2: Issue Resolution
+Once all existing MRs are healthy, the bot looks for new issues assigned to it:
+- It clones the repository and creates a dedicated branch.
+- It passes the issue description to Gemini to implement the feature or fix.
+- It automatically handles forking if it doesn't have direct push access to the repository.
+- It creates a new Merge Request and assigns itself to it for continued maintenance.
+
+### 2. Internal Logic Details
+
+- **Workspace Management**: Each task is processed in a unique temporary directory within the `WorkspaceFolder`. This prevents cross-task interference.
+- **Git Visibility Control**:
+    - **For new issues**: The `.git` folder is hidden during Gemini's execution. This ensures Gemini focuses only on the code and doesn't attempt to manipulate git history or state.
+    - **For MR maintenance**: The `.git` folder remains visible. This allows Gemini to analyze the project history and previous commits to better understand the context of failures or review comments.
+- **Automatic Localization**: After Gemini completes its task, the bot optionally runs a localization pass. It scans for projects with `Resources` directories and uses `Aiursoft.Dotlang.AspNetTranslate` to ensure all strings are correctly localized across target languages.
+- **Smart Pushing**:
+    - If the bot has push access, it pushes directly to the source branch.
+    - If fixing a third-party MR where it lacks permissions, it pushes to its own fork and creates a replacement MR, unassigning itself from the original one.
+- **NuGet Versioning**: The bot is programmed to automatically bump NuGet package versions when it detects changes that warrant a new release.
 
 ## Installation
 
