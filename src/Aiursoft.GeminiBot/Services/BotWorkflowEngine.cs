@@ -48,6 +48,7 @@ public class BotWorkflowEngine
             _logger.LogInformation("Starting workflow for workspace {WorkspaceName}. Focus: {CommitMessage}", context.WorkspaceName, context.CommitMessage);
             await GetRepository(context);
             await PrepareWorkspace(context);
+            await TriggerMergeAsync(context);
             await RunGemini(context);
             await RunLocalization(context);
             
@@ -104,6 +105,29 @@ public class BotWorkflowEngine
             $"{context.Server.UserName}:{context.Server.Token}");
 
         await _workspaceManager.SetUserConfig(context.WorkspacePath, context.Server.DisplayName, context.Server.UserEmail);
+    }
+
+    private async Task TriggerMergeAsync(WorkflowContext context)
+    {
+        if (context.NeedResolveConflicts)
+        {
+            _logger.LogInformation("Proactively merging {TargetBranch} into {SourceBranch} to trigger conflicts...", context.TargetBranch, context.SourceBranch);
+            
+            // git fetch origin {TargetBranch}
+            await _commandService.RunCommandAsync("git", $"fetch origin {context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
+            
+            // git merge origin/{TargetBranch}
+            var (exitCode, output, _) = await _commandService.RunCommandAsync("git", $"merge origin/{context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
+
+            if (exitCode != 0)
+            {
+                _logger.LogInformation("Merge resulted in expected conflicts. Output: {Output}", output);
+            }
+            else
+            {
+                _logger.LogInformation("Merge was successful without conflicts (unexpected but okay).");
+            }
+        }
     }
 
     private async Task RunGemini(WorkflowContext context)

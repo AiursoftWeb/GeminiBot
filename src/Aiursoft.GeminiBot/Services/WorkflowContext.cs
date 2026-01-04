@@ -17,6 +17,7 @@ public class WorkflowContext
     public string CommitMessage { get; set; } = string.Empty;
     public bool HideGitFolder { get; set; }
     public string PushBranch { get; set; } = string.Empty;
+    public bool NeedResolveConflicts { get; set; }
     
     // Derived/State data
     public Repository? Repository { get; set; }
