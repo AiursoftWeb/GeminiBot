@@ -195,7 +195,8 @@ public class MergeRequestProcessor
                 Prompt = prompt,
                 CommitMessage = commitMessage,
                 PushBranch = isOthersMr ? $"fix-mr-{mr.IID}" : branchName,
-                HideGitFolder = false
+                HideGitFolder = false,
+                NeedResolveConflicts = item.HasConflicts
             };
 
             await _workflowEngine.ExecuteAsync(context, async ctx => 
@@ -239,11 +240,18 @@ Recent discussions and feedback (marked [NEW] if since last bot commit):
 
     private string BuildConflictPrompt(string basePrompt, MergeRequestSearchResult mr, string targetBranch) => 
         $@"{basePrompt}
-Status: MERGE CONFLICTS.
-The branch '{mr.SourceBranch}' has conflicts with '{targetBranch}'. 
-Please resolve these conflicts. Usually this involves merging '{targetBranch}' into '{mr.SourceBranch}' and fixing the files.
+Status: CRITICAL - MERGE CONFLICTS DETECTED.
+Target branch '{targetBranch}' has been merged into your current branch '{mr.SourceBranch}', and it resulted in conflicts.
 
-Please analyze the project and resolve the conflicts.
+Your task:
+1. Identify all files with merge conflict markers (<<<<<<<, =======, >>>>>>>).
+2. Resolve the conflicts by choosing the correct code or combining changes as appropriate.
+3. Ensure the project still builds and all tests pass after resolution.
+4. DO NOT make any unrelated changes. Focus ONLY on resolving the conflicts.
+5. You MUST remove all conflict markers before finishing.
+
+I have already triggered the merge for you, so you will see conflict markers in the affected files. Please fix them immediately.
+
 Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
 
     private string BuildFailurePrompt(string basePrompt, DetailedMergeRequest details, string failureLogs) => 
