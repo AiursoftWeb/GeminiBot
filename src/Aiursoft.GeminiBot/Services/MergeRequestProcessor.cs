@@ -338,6 +338,4 @@ Don't forget to bump the version for updated nuget package projects after necess
         }
         catch (Exception ex) { _logger.LogError(ex, "Error getting failure logs for pipeline {PipelineId}", pipelineId); return string.Empty; }
     }
-
-    private class GitLabUser { public int Id { get; set; } }
 }
