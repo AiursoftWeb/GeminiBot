@@ -64,3 +64,12 @@ public class GitLabMergeRequestDto
     [JsonPropertyName("author")]
     public GitLabUser Author { get; set; } = new();
 }
+
+public class GitLabIssueDto
+{
+    [JsonPropertyName("iid")]
+    public int Iid { get; set; }
+
+    [JsonPropertyName("state")]
+    public string State { get; set; } = string.Empty;
+}
