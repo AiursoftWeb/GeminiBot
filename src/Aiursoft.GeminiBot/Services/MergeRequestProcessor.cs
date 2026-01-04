@@ -91,6 +91,18 @@ public class MergeRequestProcessor
 
             if (hasConflicts || hasNewHumanReview || pipelineFailed)
             {
+                // Get target branch: from dictionary if available, otherwise fetch from repository
+                string targetBranch;
+                if (targetBranches.TryGetValue(mr.IID, out var branch))
+                {
+                    targetBranch = branch;
+                }
+                else
+                {
+                    var repository = await _versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
+                    targetBranch = repository.DefaultBranch ?? "master"; // Fallback to master if null
+                }
+
                 mrsToProcess.Add(new MRToProcess
                 {
                     SearchResult = mr,
@@ -98,7 +110,7 @@ public class MergeRequestProcessor
                     HasConflicts = hasConflicts,
                     HasNewHumanReview = hasNewHumanReview,
                     PipelineFailed = pipelineFailed,
-                    TargetBranch = targetBranches.GetValueOrDefault(mr.IID, "main"),
+                    TargetBranch = targetBranch,
                     AuthorName = server.Provider == "GitLab" ? gitLabMrs.FirstOrDefault(m => m.Iid == mr.IID)?.Author.Username : null
                 });
             }
