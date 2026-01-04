@@ -154,7 +154,7 @@ Please review carefully before merging.";
             var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
             
             var mrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/merge_requests?state=opened&source_branch={branchName}";
-            var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequest>>(mrUrl, HttpMethod.Get, server.Token);
+            var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
             var mr = mrs.FirstOrDefault();
 
             if (mr != null)
@@ -169,7 +169,4 @@ Please review carefully before merging.";
             _logger.LogError(ex, "Failed to assign MR to bot for issue #{IssueId}", issue.Iid);
         }
     }
-
-    private class GitLabUser { public int Id { get; set; } }
-    private class GitLabMergeRequest { public int Iid { get; set; } }
 }
