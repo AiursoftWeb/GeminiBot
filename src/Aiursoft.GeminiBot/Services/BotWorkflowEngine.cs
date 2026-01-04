@@ -45,6 +45,7 @@ public class BotWorkflowEngine
     {
         try
         {
+            _logger.LogInformation("Starting workflow for workspace {WorkspaceName}. Focus: {CommitMessage}", context.WorkspaceName, context.CommitMessage);
             await GetRepository(context);
             await PrepareWorkspace(context);
             await RunGemini(context);
