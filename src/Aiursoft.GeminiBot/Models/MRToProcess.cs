@@ -11,4 +11,6 @@ public class MRToProcess
     public bool PipelineFailed { get; init; }
     public string TargetBranch { get; init; } = "main";
     public string? AuthorName { get; init; }
+    public string? Discussions { get; init; }
+    public DateTime LastBotCommitTime { get; init; }
 }

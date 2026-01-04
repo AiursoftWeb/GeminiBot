@@ -33,13 +33,16 @@ public class IssueProcessor
         try
         {
             ValidateIssue(issue);
+            _logger.LogInformation("Analyzing Issue #{IssueId}: {Title} on {EndPoint}...", issue.Iid, issue.Title, server.EndPoint);
 
             if (await _versionControl.HasOpenPullRequestForIssue(server.EndPoint, issue.ProjectId, issue.Iid, server.Token))
             {
-                _logger.LogInformation("Issue #{IssueId} already has an open PR/MR. Skipping...", issue.Iid);
+                _logger.LogInformation("Issue #{IssueId} already has an open PR/MR. Skipping to avoid duplicate work.", issue.Iid);
                 return ProcessResult.Skipped("Issue already has an open PR/MR");
             }
 
+            _logger.LogInformation("Issue #{IssueId} needs attention. Bot will create a fork and a new MR.", issue.Iid);
+            
             // Fetch repository details to get the actual default branch
             var repository = await _versionControl.GetRepository(
                 server.EndPoint,
