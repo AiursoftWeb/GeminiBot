@@ -41,6 +41,12 @@ public class IssueProcessor
                 return ProcessResult.Skipped("Issue already has an open PR/MR");
             }
 
+            if (!await IsIssueOpenAsync(server, issue))
+            {
+                _logger.LogInformation("Issue #{IssueId} is already closed. Skipping.", issue.Iid);
+                return ProcessResult.Skipped("Issue is already closed");
+            }
+
             _logger.LogInformation("Issue #{IssueId} needs attention. Bot will create a fork and a new MR.", issue.Iid);
             
             // Fetch repository details to get the actual default branch
@@ -70,7 +76,15 @@ public class IssueProcessor
                 await _workflowEngine.EnsureRepositoryForkedAsync(server, ctx.Repository!);
                 var pushPath = _versionControl.GetPushPath(server, ctx.Repository!);
                 await _workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
-                await CreatePullRequestIfNeededAsync(server, ctx.Repository!, issue, ctx.PushBranch);
+
+                if (await IsIssueOpenAsync(server, issue))
+                {
+                    await CreatePullRequestIfNeededAsync(server, ctx.Repository!, issue, ctx.PushBranch);
+                }
+                else
+                {
+                    _logger.LogWarning("Issue #{IssueId} has been closed while processing. Skipping pull request creation.", issue.Iid);
+                }
             });
 
             return context.Result;
@@ -79,6 +93,28 @@ public class IssueProcessor
         {
             _logger.LogError(ex, "Error processing issue #{IssueIid}", issue.Iid);
             return ProcessResult.Failed($"Error processing issue #{issue.Iid}", ex);
+        }
+    }
+
+    private async Task<bool> IsIssueOpenAsync(Server server, Issue issue)
+    {
+        if (server.Provider != "GitLab")
+        {
+            // For other providers, we don't have a direct way to check yet via IVersionControlService.
+            // We assume it's still open to avoid breaking existing functionality for other providers.
+            return true;
+        }
+
+        try
+        {
+            var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/issues/{issue.Iid}";
+            var issueDetails = await _httpWrapper.SendHttpAndGetJson<GitLabIssueDto>(url, HttpMethod.Get, server.Token);
+            return string.Equals(issueDetails.State, "opened", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check if issue #{IssueId} is still open. Assuming it is.", issue.Iid);
+            return true;
         }
     }
 
