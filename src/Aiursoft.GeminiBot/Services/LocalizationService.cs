@@ -97,12 +97,12 @@ public class LocalizationService
                 await _retryEngine.RunWithRetry(async _ =>
                 {
                     await LocalizeProjectDirectoryAsync(projectDir);
-                }, attempts: 3);
+                }, attempts: 6);
                 localizedCount++;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during localization of project: {CsprojFile} after 3 attempts", csprojFile);
+                _logger.LogError(ex, "Error during localization of project: {CsprojFile} after 6 attempts", csprojFile);
                 // Continue with other projects even if one fails
             }
         }
