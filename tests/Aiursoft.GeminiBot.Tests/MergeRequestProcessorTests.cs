@@ -32,7 +32,6 @@ public class FakeHttpMessageHandler : DelegatingHandler
 [TestClass]
 public class MergeRequestProcessorTests
 {
-    private Mock<LocalizationService> _localizationServiceMock = null!;
     private Mock<IVersionControlService> _versionControlMock = null!;
     private Mock<IGeminiWorkspaceManager> _workspaceManagerMock = null!;
     private HttpWrapper _httpWrapper = null!;
@@ -56,22 +55,16 @@ public class MergeRequestProcessorTests
         _options = Options.Create(options);
 
         _commandServiceMock = new Mock<IGeminiCommandService>();
-        
-        _localizationServiceMock = new Mock<LocalizationService>(
-            null!, // TranslateEntry
-            null!, // RetryEngine
-            _options,
-            new Mock<ILogger<LocalizationService>>().Object);
-            
+
         _versionControlMock = new Mock<IVersionControlService>();
-        
+
         _workspaceManagerMock = new Mock<IGeminiWorkspaceManager>();
-            
+
         _geminiCliServiceMock = new Mock<GeminiCliService>(
             _commandServiceMock.Object,
             _options,
             new Mock<ILogger<GeminiCliService>>().Object);
-            
+
         _loggerMock = new Mock<ILogger<MergeRequestProcessor>>();
 
         // Mock HttpWrapper by mocking HttpClient
@@ -210,11 +203,11 @@ public class MergeRequestProcessorTests
 
         _commandServiceMock
             .Setup(c => c.RunCommandAsync(
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<bool>(), 
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "1", ""));
 
@@ -222,7 +215,6 @@ public class MergeRequestProcessorTests
             _versionControlMock.Object,
             _workspaceManagerMock.Object,
             _geminiCliServiceMock.Object,
-            _localizationServiceMock.Object,
             _commandServiceMock.Object,
             _options,
             new Mock<ILogger<BotWorkflowEngine>>().Object);
@@ -239,19 +231,19 @@ public class MergeRequestProcessorTests
 
         // Assert
         Assert.IsTrue(result.Success);
-        
+
         // Verify new MR creation
         _versionControlMock.Verify(v => v.CreatePullRequest(
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
             It.IsAny<string>()), Times.Once);
     }
-    
+
     [TestMethod]
     public async Task ProcessMergeRequestsAsync_OwnMr_PushesToOriginalBranch()
     {
@@ -329,11 +321,11 @@ public class MergeRequestProcessorTests
 
         _commandServiceMock
             .Setup(c => c.RunCommandAsync(
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<bool>(), 
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "1", ""));
 
@@ -341,7 +333,6 @@ public class MergeRequestProcessorTests
             _versionControlMock.Object,
             _workspaceManagerMock.Object,
             _geminiCliServiceMock.Object,
-            _localizationServiceMock.Object,
             _commandServiceMock.Object,
             _options,
             new Mock<ILogger<BotWorkflowEngine>>().Object);
@@ -357,10 +348,10 @@ public class MergeRequestProcessorTests
 
         // Assert
         Assert.IsTrue(result.Success);
-        
+
         // Verify push to original branch
         _workspaceManagerMock.Verify(w => w.Push(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.Once);
-        
+
         // Verify NO new MR was created
         _versionControlMock.Verify(v => v.CreatePullRequest(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
@@ -426,32 +417,32 @@ public class MergeRequestProcessorTests
 
         _commandServiceMock
             .Setup(c => c.RunCommandAsync(
-                It.IsAny<string>(), 
-                "rev-list --count HEAD ^origin/conflict-branch", 
-                It.IsAny<string>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<bool>(), 
+                It.IsAny<string>(),
+                "rev-list --count HEAD ^origin/conflict-branch",
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "1", ""));
 
         // Expect git fetch and git merge
         _commandServiceMock
             .Setup(c => c.RunCommandAsync(
-                "git", 
-                "fetch origin main", 
-                It.IsAny<string>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<bool>(), 
+                "git",
+                "fetch origin main",
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((0, "", ""));
 
         _commandServiceMock
             .Setup(c => c.RunCommandAsync(
-                "git", 
-                "merge origin/main", 
-                It.IsAny<string>(), 
-                It.IsAny<TimeSpan>(), 
-                It.IsAny<bool>(), 
+                "git",
+                "merge origin/main",
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
                 It.IsAny<IDictionary<string, string?>>()))
             .ReturnsAsync((1, "CONFLICT (content): Merge conflict in file.txt", ""));
 
@@ -459,7 +450,6 @@ public class MergeRequestProcessorTests
             _versionControlMock.Object,
             _workspaceManagerMock.Object,
             _geminiCliServiceMock.Object,
-            _localizationServiceMock.Object,
             _commandServiceMock.Object,
             _options,
             new Mock<ILogger<BotWorkflowEngine>>().Object);
@@ -475,7 +465,7 @@ public class MergeRequestProcessorTests
 
         // Assert
         Assert.IsTrue(result.Success);
-        
+
         // Verify git fetch and git merge were called
         _commandServiceMock.Verify(c => c.RunCommandAsync("git", "fetch origin main", It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<IDictionary<string, string?>>()), Times.Once);
         _commandServiceMock.Verify(c => c.RunCommandAsync("git", "merge origin/main", It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<IDictionary<string, string?>>()), Times.Once);

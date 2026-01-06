@@ -18,7 +18,6 @@ public class BotWorkflowEngine
     private readonly IVersionControlService _versionControl;
     private readonly IGeminiWorkspaceManager _workspaceManager;
     private readonly GeminiCliService _geminiCliService;
-    private readonly LocalizationService _localizationService;
     private readonly IGeminiCommandService _commandService;
     private readonly GeminiBotOptions _options;
     private readonly ILogger<BotWorkflowEngine> _logger;
@@ -27,7 +26,6 @@ public class BotWorkflowEngine
         IVersionControlService versionControl,
         IGeminiWorkspaceManager workspaceManager,
         GeminiCliService geminiCliService,
-        LocalizationService localizationService,
         IGeminiCommandService commandService,
         IOptions<GeminiBotOptions> options,
         ILogger<BotWorkflowEngine> logger)
@@ -35,7 +33,6 @@ public class BotWorkflowEngine
         _versionControl = versionControl;
         _workspaceManager = workspaceManager;
         _geminiCliService = geminiCliService;
-        _localizationService = localizationService;
         _commandService = commandService;
         _options = options.Value;
         _logger = logger;
@@ -50,8 +47,7 @@ public class BotWorkflowEngine
             await PrepareWorkspace(context);
             await TriggerMergeAsync(context);
             await RunGemini(context);
-            await RunLocalization(context);
-            
+
             if (await HasChanges(context))
             {
                 await CommitChanges(context);
@@ -84,9 +80,9 @@ public class BotWorkflowEngine
     {
         _logger.LogInformation("Fetching repository details for project {ProjectId}...", context.ProjectId);
         context.Repository = await _versionControl.GetRepository(
-            context.Server.EndPoint, 
-            context.ProjectId, 
-            string.Empty, 
+            context.Server.EndPoint,
+            context.ProjectId,
+            string.Empty,
             context.Server.Token);
     }
 
@@ -94,7 +90,7 @@ public class BotWorkflowEngine
     {
         var repoName = context.Repository?.Name ?? "unknown";
         context.WorkspacePath = Path.Combine(_options.WorkspaceFolder, $"{context.ProjectId}-{repoName}-{context.WorkspaceName}");
-        
+
         _logger.LogInformation("Cloning repository to {WorkPath}...", context.WorkspacePath);
 
         await _workspaceManager.ResetRepo(
@@ -112,10 +108,10 @@ public class BotWorkflowEngine
         if (context.NeedResolveConflicts)
         {
             _logger.LogInformation("Proactively merging {TargetBranch} into {SourceBranch} to trigger conflicts...", context.TargetBranch, context.SourceBranch);
-            
+
             // git fetch origin {TargetBranch}
             await _commandService.RunCommandAsync("git", $"fetch origin {context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
-            
+
             // git merge origin/{TargetBranch}
             var (exitCode, output, _) = await _commandService.RunCommandAsync("git", $"merge origin/{context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
 
@@ -141,12 +137,6 @@ public class BotWorkflowEngine
 
         // Gemini CLI may take a while to finish and flush files.
         await Task.Delay(1000);
-    }
-
-    private async Task RunLocalization(WorkflowContext context)
-    {
-        _logger.LogInformation("Checking for localization requirements...");
-        await _localizationService.LocalizeProjectAsync(context.WorkspacePath);
     }
 
     private async Task<bool> HasChanges(WorkflowContext context)
