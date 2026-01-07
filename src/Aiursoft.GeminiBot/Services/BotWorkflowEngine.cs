@@ -38,14 +38,20 @@ public class BotWorkflowEngine
         _logger = logger;
     }
 
-    public async Task<WorkflowContext> ExecuteAsync(WorkflowContext context, Func<WorkflowContext, Task>? finalizeAsync = null)
+    public async Task<WorkflowContext> ExecuteAsync(WorkflowContext context,
+        Func<WorkflowContext, Task>? finalizeAsync = null)
     {
         try
         {
-            _logger.LogInformation("Starting workflow for workspace {WorkspaceName}. Focus: {CommitMessage}", context.WorkspaceName, context.CommitMessage);
+            _logger.LogInformation("Starting workflow for workspace {WorkspaceName}. Focus: {CommitMessage}",
+                context.WorkspaceName, context.CommitMessage);
             await GetRepository(context);
             await PrepareWorkspace(context);
-            await TriggerMergeAsync(context);
+            if (context.NeedResolveConflicts)
+            {
+                await TriggerMergeAsync(context);
+            }
+
             await RunGemini(context);
 
             if (await HasChanges(context))
@@ -63,7 +69,8 @@ public class BotWorkflowEngine
             }
             else
             {
-                _logger.LogInformation("No changes detected for {WorkspaceName}. Skipping finalize.", context.WorkspaceName);
+                _logger.LogInformation("No changes detected for {WorkspaceName}. Skipping finalize.",
+                    context.WorkspaceName);
                 context.Result = ProcessResult.Skipped("No changes made");
             }
         }
@@ -89,7 +96,8 @@ public class BotWorkflowEngine
     private async Task PrepareWorkspace(WorkflowContext context)
     {
         var repoName = context.Repository?.Name ?? "unknown";
-        context.WorkspacePath = Path.Combine(_options.WorkspaceFolder, $"{context.ProjectId}-{repoName}-{context.WorkspaceName}");
+        context.WorkspacePath = Path.Combine(_options.WorkspaceFolder,
+            $"{context.ProjectId}-{repoName}-{context.WorkspaceName}");
 
         _logger.LogInformation("Cloning repository to {WorkPath}...", context.WorkspacePath);
 
@@ -100,39 +108,66 @@ public class BotWorkflowEngine
             CloneMode.Full,
             $"{context.Server.UserName}:{context.Server.Token}");
 
-        await _workspaceManager.SetUserConfig(context.WorkspacePath, context.Server.DisplayName, context.Server.UserEmail);
+        await _workspaceManager.SetUserConfig(context.WorkspacePath, context.Server.DisplayName,
+            context.Server.UserEmail);
     }
 
     private async Task TriggerMergeAsync(WorkflowContext context)
     {
-        if (context.NeedResolveConflicts)
+        _logger.LogInformation("Proactively merging {TargetBranch} into {SourceBranch} to trigger conflicts...",
+            context.TargetBranch, context.SourceBranch);
+
+        // 1. 获取最新代码
+        await _commandService.RunCommandAsync("git", $"fetch origin {context.TargetBranch}", context.WorkspacePath,
+            TimeSpan.FromSeconds(30));
+
+        // 2. 确保是 Merge 行为，不是 Rebase
+        await _commandService.RunCommandAsync("git", "config pull.rebase false", context.WorkspacePath,
+            TimeSpan.FromSeconds(10));
+
+        // 3. [关键优化] 开启 diff3，让 AI 看到"冲突前的原样"，大幅提升合并逻辑判断力
+        await _commandService.RunCommandAsync("git", "config merge.conflictstyle diff3", context.WorkspacePath,
+            TimeSpan.FromSeconds(10));
+
+        // 4. 执行合并
+        // 注意：这里我们允许非0退出码，因为冲突就是非0
+        var (exitCode, output, _) = await _commandService.RunCommandAsync("git", $"merge origin/{context.TargetBranch}",
+            context.WorkspacePath, TimeSpan.FromSeconds(30));
+
+        if (exitCode != 0)
         {
-            _logger.LogInformation("Proactively merging {TargetBranch} into {SourceBranch} to trigger conflicts...", context.TargetBranch, context.SourceBranch);
+            // 5. [新增] 确认是否真的产生了冲突文件
+            // --diff-filter=U 专门列出 Unmerged (有冲突) 的文件
+            var (_, conflictFiles, _) = await _commandService.RunCommandAsync("git", "diff --name-only --diff-filter=U",
+                context.WorkspacePath, TimeSpan.FromSeconds(10));
 
-            // git fetch origin {TargetBranch}
-            await _commandService.RunCommandAsync("git", $"fetch origin {context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
-
-            // git merge origin/{TargetBranch}
-            var (exitCode, output, _) = await _commandService.RunCommandAsync("git", $"merge origin/{context.TargetBranch}", context.WorkspacePath, TimeSpan.FromSeconds(30));
-
-            if (exitCode != 0)
+            if (!string.IsNullOrWhiteSpace(conflictFiles))
             {
-                _logger.LogInformation("Merge resulted in expected conflicts. Output: {Output}", output);
+                _logger.LogInformation("Merge conflict triggered successfully. Conflicted files:\n{Files}",
+                    conflictFiles);
+                // 你甚至可以将 conflictFiles 塞入 context，让 prompt 知道具体修哪些文件
             }
             else
             {
-                _logger.LogInformation("Merge was successful without conflicts (unexpected but okay).");
+                _logger.LogWarning("Merge failed but no conflicted files were found. Output: {Output}", output);
+                _logger.LogCritical("Unexpected merge failure without conflicts. Please investigate!!");
+                // 这里可能需要抛出异常，因为如果没有冲突标记，AI 进去也不知道修什么，可能会瞎改
             }
+        }
+        else
+        {
+            _logger.LogInformation("Merge was successful without conflicts.");
         }
     }
 
     private async Task RunGemini(WorkflowContext context)
     {
         _logger.LogInformation("Invoking Gemini CLI...");
-        var success = await _geminiCliService.InvokeGeminiCliAsync(context.WorkspacePath, context.Prompt, context.HideGitFolder);
+        var success =
+            await _geminiCliService.InvokeGeminiCliAsync(context.WorkspacePath, context.Prompt, context.HideGitFolder);
         if (!success)
         {
-             _logger.LogWarning("Gemini CLI failed. Continuing to see if localization helps...");
+            _logger.LogWarning("Gemini CLI failed. Continuing to see if localization helps...");
         }
 
         // Gemini CLI may take a while to finish and flush files.
@@ -151,7 +186,8 @@ public class BotWorkflowEngine
         if (await _workspaceManager.PendingCommit(context.WorkspacePath))
         {
             _logger.LogInformation("Committing changes to branch {Branch}...", context.PushBranch);
-            var saved = await _workspaceManager.CommitToBranch(context.WorkspacePath, context.CommitMessage, context.PushBranch);
+            var saved = await _workspaceManager.CommitToBranch(context.WorkspacePath, context.CommitMessage,
+                context.PushBranch);
             if (!saved)
             {
                 throw new InvalidOperationException("Failed to commit changes");
