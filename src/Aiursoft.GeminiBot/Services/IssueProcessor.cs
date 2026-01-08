@@ -33,7 +33,18 @@ public class IssueProcessor
         try
         {
             ValidateIssue(issue);
-            _logger.LogInformation("Analyzing Issue #{IssueId}: {Title} on {EndPoint}...", issue.Iid, issue.Title, server.EndPoint);
+            _logger.LogInformation("Analyzing Issue #{IssueId}: {Title} on {EndPoint} (Project ID: {ProjectId})...", 
+                issue.Iid, issue.Title, server.EndPoint, issue.ProjectId);
+            
+            // Fetch repository details as early as possible for better logging and context.
+            var repository = await _versionControl.GetRepository(
+                server.EndPoint,
+                issue.ProjectId.ToString(),
+                string.Empty,
+                server.Token);
+
+            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})", 
+                repository.Name, repository.CloneUrl);
 
             if (await _versionControl.HasOpenPullRequestForIssue(server.EndPoint, issue.ProjectId, issue.Iid, server.Token))
             {
@@ -49,13 +60,6 @@ public class IssueProcessor
 
             _logger.LogInformation("Issue #{IssueId} needs attention. Bot will create a fork and a new MR.", issue.Iid);
             
-            // Fetch repository details to get the actual default branch
-            var repository = await _versionControl.GetRepository(
-                server.EndPoint,
-                issue.ProjectId.ToString(),
-                string.Empty,
-                server.Token);
-
             var defaultBranch = repository.DefaultBranch ?? "master"; // Fallback to master if null
 
             var context = new WorkflowContext
