@@ -83,7 +83,13 @@ public class MergeRequestProcessor
         var mrsToProcess = new List<MRToProcess>();
         foreach (var mr in mergeRequests)
         {
-            _logger.LogInformation("Analyzing MR #{IID}: {Title}...", mr.IID, mr.Title);
+            _logger.LogInformation("Analyzing MR #{IID}: {Title} on {EndPoint} (Project ID: {ProjectId})...", 
+                mr.IID, mr.Title, server.EndPoint, mr.ProjectId);
+
+            var repository = await _versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
+            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})", 
+                repository.Name, repository.CloneUrl);
+            
             var details = await _versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mr.ProjectId, mr.IID);
             
             var hasConflicts = details.HasConflicts;
@@ -105,7 +111,7 @@ public class MergeRequestProcessor
                     string.Join(", ", reasons),
                     isOthersMr ? "DOES NOT have" : "has");
 
-                // Get target branch: from dictionary if available, otherwise fetch from repository
+                // Get target branch: from dictionary if available, otherwise use from fetched repository
                 string targetBranch;
                 if (targetBranches.TryGetValue(mr.IID, out var branch))
                 {
@@ -113,7 +119,6 @@ public class MergeRequestProcessor
                 }
                 else
                 {
-                    var repository = await _versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
                     targetBranch = repository.DefaultBranch ?? "master"; // Fallback to master if null
                 }
 
