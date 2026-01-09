@@ -33,7 +33,6 @@ Once all existing MRs are healthy, the bot looks for new issues assigned to it:
 - **Git Visibility Control**:
     - **For new issues**: The `.git` folder is hidden during Gemini's execution. This ensures Gemini focuses only on the code and doesn't attempt to manipulate git history or state.
     - **For MR maintenance**: The `.git` folder remains visible. This allows Gemini to analyze the project history and previous commits to better understand the context of failures or review comments.
-- **Automatic Localization**: After Gemini completes its task, the bot optionally runs a localization pass. It scans for projects with `Resources` directories and uses `Aiursoft.Dotlang.AspNetTranslate` to ensure all strings are correctly localized across target languages.
 - **Smart Pushing**:
     - If the bot has push access, it pushes directly to the source branch.
     - If fixing a third-party MR where it lacks permissions, it pushes to its own fork and creates a replacement MR, unassigning itself from the original one.
