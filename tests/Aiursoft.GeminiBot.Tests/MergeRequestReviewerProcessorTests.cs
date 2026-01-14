@@ -136,7 +136,7 @@ public class MergeRequestReviewerProcessorTests
 
         _geminiCliServiceMock
             .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .Callback<string, string, bool>((path, desc, hide) => 
+            .Callback<string, string, bool>((path, _, _) => 
             {
                 File.WriteAllText(Path.Combine(path, "review.md"), "This is a great MR!");
             })

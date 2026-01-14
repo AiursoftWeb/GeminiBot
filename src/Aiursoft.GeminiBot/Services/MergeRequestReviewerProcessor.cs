@@ -6,7 +6,6 @@ using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 
 namespace Aiursoft.GeminiBot.Services;
 
@@ -96,7 +95,6 @@ public class MergeRequestReviewerProcessor
             if (needsReview)
             {
                 _logger.LogInformation("MR #{IID} needs review.", mrDto.Iid);
-                var repository = await _versionControl.GetRepository(server.EndPoint, mrDto.ProjectId.ToString(), string.Empty, server.Token);
                 var details = await _versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mrDto.ProjectId, mrDto.Iid);
 
                 mrsToReview.Add(new MRToProcess

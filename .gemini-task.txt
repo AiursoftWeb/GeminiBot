@@ -1,0 +1,128 @@
+You are working on an EXISTING Merge Request #24: 'Fix for issue #15: 增加一个最低的优先级：进行Review'.
+Source Branch: fix-issue-15
+Target Branch: master
+
+Recent discussions and feedback (marked [NEW] if since last bot commit):
+
+
+Status: CI/CD PIPELINE FAILED.
+Pipeline URL: https://gitlab.aiursoft.com/gemini-bot/geminibot/-/pipelines/42173
+
+Failure Logs:
+
+
+=== Job: lint (Stage: lint) ===
+2026-01-14T18:16:58.048657Z 00O [0KRunning with gitlab-runner 18.7.2 (1c855082)[0;m
+2026-01-14T18:16:58.048668Z 00O [0K  on 40d31d828f4c wjuYPY19y, system ID: s_2ac520b8d282[0;m
+2026-01-14T18:16:58.048685Z 00O section_start:1768414618:prepare_executor
+2026-01-14T18:16:58.048686Z 00O+[0K[0K[36;1mPreparing the "shell" executor[0;m[0;m
+2026-01-14T18:16:58.048805Z 00O [0KUsing Shell (bash) executor...[0;m
+2026-01-14T18:16:58.048807Z 00O section_end:1768414618:prepare_executor
+2026-01-14T18:16:58.048807Z 00O+[0Ksection_start:1768414618:prepare_script
+2026-01-14T18:16:58.048885Z 00O+[0K[0K[36;1mPreparing environment[0;m[0;m
+2026-01-14T18:16:58.057163Z 01O Running on 40d31d828f4c...
+2026-01-14T18:16:58.059342Z 00O section_end:1768414618:prepare_script
+2026-01-14T18:16:58.059345Z 00O+[0Ksection_start:1768414618:get_sources
+2026-01-14T18:16:58.059853Z 00O+[0K[0K[36;1mGetting source from Git repository[0;m[0;m
+2026-01-14T18:16:58.084363Z 01O [32;1mGitaly correlation ID: 01KEYVK8ADKPMDMQP49C2THK81[0;m
+2026-01-14T18:16:58.088533Z 01O [32;1mFetching changes with git depth set to 20...[0;m
+2026-01-14T18:16:58.089816Z 01O Reinitialized existing Git repository in /home/gitlab-runner/builds/geminibot/42173/.git/
+2026-01-14T18:16:58.210109Z 01O [32;1mChecking out 55764f2a as detached HEAD (ref is fix-issue-15)...[0;m
+2026-01-14T18:16:58.228871Z 01O Removing src/Aiursoft.GeminiBot/bin/
+2026-01-14T18:16:58.228877Z 01O Removing src/Aiursoft.GeminiBot/obj/
+2026-01-14T18:16:58.228878Z 01O Removing tests/Aiursoft.GeminiBot.Tests/bin/
+2026-01-14T18:16:58.228878Z 01O Removing tests/Aiursoft.GeminiBot.Tests/obj/
+2026-01-14T18:16:58.231850Z 01O [32;1mSkipping Git submodules setup[0;m
+2026-01-14T18:16:58.233184Z 00O section_end:1768414618:get_sources
+2026-01-14T18:16:58.233187Z 00O+[0Ksection_start:1768414618:step_script
+2026-01-14T18:16:58.233786Z 00O+[0K[0K[36;1mExecuting "step_script" stage of the job script[0;m[0;m
+2026-01-14T18:16:58.246462Z 01O [32;1m$ export DOTNET_CLI_TELEMETRY_OPTOUT=1[0;m
+2026-01-14T18:16:58.246475Z 01O [32;1m$ export PATH=$PATH:$HOME/.dotnet/tools[0;m
+2026-01-14T18:16:58.246478Z 01O [32;1m$ which jb || dotnet tool install JetBrains.ReSharper.GlobalTools --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-14T18:16:58.247055Z 01O /home/gitlab-runner/.dotnet/tools/jb
+2026-01-14T18:16:58.247114Z 01O [32;1m$ which reportgenerator || dotnet tool install dotnet-reportgenerator-globaltool --global --add-source https://nuget.aiursoft.com/v3/index.json --configfile ./nuget.config -v d[0;m
+2026-01-14T18:16:58.247597Z 01O /home/gitlab-runner/.dotnet/tools/reportgenerator
+2026-01-14T18:16:58.247641Z 01O [32;1m$ echo "Hostname: $(hostname)"[0;m
+2026-01-14T18:16:58.248399Z 01O Hostname: 40d31d828f4c
+2026-01-14T18:16:58.248404Z 01O [32;1m$ dotnet --info[0;m
+2026-01-14T18:16:58.321835Z 01O .NET SDK:
+2026-01-14T18:16:58.321842Z 01O  Version:           10.0.100
+2026-01-14T18:16:58.321843Z 01O  Commit:            b0f34d51fc
+2026-01-14T18:16:58.340440Z 01O  Workload version:  10.0.100-manifests.4eab3e0f
+2026-01-14T18:16:58.340858Z 01O  MSBuild version:   18.0.2+b0f34d51f
+2026-01-14T18:16:58.340860Z 01O 
+2026-01-14T18:16:58.340860Z 01O Runtime Environment:
+2026-01-14T18:16:58.341260Z 01O  OS Name:     ubuntu
+2026-01-14T18:16:58.341262Z 01O  OS Version:  25.10
+2026-01-14T18:16:58.342071Z 01O  OS Platform: Linux
+2026-01-14T18:16:58.346993Z 01O  RID:         ubuntu.25.10-x64
+2026-01-14T18:16:58.346994Z 01O  Base Path:   /usr/lib/dotnet/sdk/10.0.100/
+2026-01-14T18:16:58.346994Z 01O 
+2026-01-14T18:16:58.346995Z 01O .NET workloads installed:
+2026-01-14T18:16:58.348240Z 01O There are no installed workloads to display.
+2026-01-14T18:16:58.348241Z 01O Configured to use workload sets when installing new manifests.
+2026-01-14T18:16:58.348242Z 01O No workload sets are installed. Run "dotnet workload restore" to install a workload set.
+2026-01-14T18:16:58.349131Z 01O 
+2026-01-14T18:16:58.349132Z 01O Host:
+2026-01-14T18:16:58.349132Z 01O   Version:      10.0.0
+2026-01-14T18:16:58.349153Z 01O   Architecture: x64
+2026-01-14T18:16:58.349153Z 01O   Commit:       b0f34d51fc
+2026-01-14T18:16:58.349153Z 01O 
+2026-01-14T18:16:58.349154Z 01O .NET SDKs installed:
+2026-01-14T18:16:58.349154Z 01O   10.0.100 [/usr/lib/dotnet/sdk]
+2026-01-14T18:16:58.349154Z 01O 
+2026-01-14T18:16:58.349154Z 01O .NET runtimes installed:
+2026-01-14T18:16:58.349155Z 01O   Microsoft.AspNetCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.AspNetCore.App]
+2026-01-14T18:16:58.349155Z 01O   Microsoft.NETCore.App 10.0.0 [/usr/lib/dotnet/shared/Microsoft.NETCore.App]
+2026-01-14T18:16:58.349156Z 01O 
+2026-01-14T18:16:58.349156Z 01O Other architectures found:
+2026-01-14T18:16:58.349156Z 01O   None
+2026-01-14T18:16:58.349156Z 01O 
+2026-01-14T18:16:58.349156Z 01O Environment variables:
+2026-01-14T18:16:58.349157Z 01O   DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/gitlab-runner/.cache/dotnet_bundle_extract]
+2026-01-14T18:16:58.349157Z 01O   DOTNET_CLI_TELEMETRY_OPTOUT              [1]
+2026-01-14T18:16:58.349157Z 01O 
+2026-01-14T18:16:58.349158Z 01O global.json file:
+2026-01-14T18:16:58.349158Z 01O   Not found
+2026-01-14T18:16:58.349158Z 01O 
+2026-01-14T18:16:58.349158Z 01O Learn more:
+2026-01-14T18:16:58.349158Z 01O   https://aka.ms/dotnet/info
+2026-01-14T18:16:58.349159Z 01O 
+2026-01-14T18:16:58.349159Z 01O Download .NET:
+2026-01-14T18:16:58.349159Z 01O   https://aka.ms/dotnet/download
+2026-01-14T18:16:58.352069Z 01O [32;1m$ chmod +x ./lint.sh[0;m
+2026-01-14T18:16:58.355784Z 01O [32;1m$ ./lint.sh[0;m
+2026-01-14T18:16:58.356689Z 01O Checking for JetBrains ReSharper Global Tools...
+2026-01-14T18:16:58.356731Z 01O jb is already installed.
+2026-01-14T18:16:58.356733Z 01O Restoring dependencies...
+2026-01-14T18:16:58.818510Z 01O   Determining projects to restore...
+2026-01-14T18:16:59.180399Z 01O   Restored /home/gitlab-runner/builds/geminibot/42173/tests/Aiursoft.GeminiBot.Tests/Aiursoft.GeminiBot.Tests.csproj (in 166 ms).
+2026-01-14T18:16:59.180408Z 01O   Restored /home/gitlab-runner/builds/geminibot/42173/src/Aiursoft.GeminiBot/Aiursoft.GeminiBot.csproj (in 166 ms).
+2026-01-14T18:16:59.199556Z 01O Running ReSharper Code Inspection...
+2026-01-14T18:17:13.328934Z 01O Filtering known false positives...
+2026-01-14T18:17:13.335611Z 01O [0;31mLinting FAILED![0m
+2026-01-14T18:17:13.335614Z 01O Issues found:
+2026-01-14T18:17:13.345061Z 01O File: src/Aiursoft.GeminiBot/Services/MergeRequestReviewerProcessor.cs | Line: 9 | Reason: Using directive is not required by the code and can be safely removed
+2026-01-14T18:17:13.352787Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestReviewerProcessorTests.cs | Line: 139 | Reason: Parameter 'desc' is never used
+2026-01-14T18:17:13.358747Z 01O File: tests/Aiursoft.GeminiBot.Tests/MergeRequestReviewerProcessorTests.cs | Line: 139 | Reason: Parameter 'hide' is never used
+2026-01-14T18:17:13.365984Z 01O File: src/Aiursoft.GeminiBot/Services/MergeRequestReviewerProcessor.cs | Line: 99 | Reason: Local variable 'repository' is never used
+2026-01-14T18:17:13.367917Z 00O section_end:1768414633:step_script
+2026-01-14T18:17:13.367921Z 00O+[0Ksection_start:1768414633:upload_artifacts_on_failure
+2026-01-14T18:17:13.368295Z 00O+[0K[0K[36;1mUploading artifacts for failed job[0;m[0;m
+2026-01-14T18:17:13.420799Z 01O [32;1mUploading artifacts...[0;m
+2026-01-14T18:17:13.459365Z 01E Runtime platform                                  [0;m  arch[0;m=amd64 os[0;m=linux pid[0;m=79885 revision[0;m=1c855082 version[0;m=18.7.2
+2026-01-14T18:17:13.459429Z 01E ./analyze_output.xml: found 1 matching artifact files and directories[0;m 
+2026-01-14T18:17:13.531695Z 01E Uploading artifacts as "archive" to coordinator... 201 Created[0;m  correlation_id[0;m=01KEYVKQFMA5S9DD59GKN06ZFA id[0;m=242566 responseStatus[0;m=201 Created token[0;m=64_DsraQ2
+2026-01-14T18:17:13.535478Z 00O section_end:1768414633:upload_artifacts_on_failure
+2026-01-14T18:17:13.535485Z 00O+[0Ksection_start:1768414633:cleanup_file_variables
+2026-01-14T18:17:13.535664Z 00O+[0K[0K[36;1mCleaning up project directory and file based variables[0;m[0;m
+2026-01-14T18:17:13.550939Z 00O section_end:1768414633:cleanup_file_variables
+2026-01-14T18:17:13.550945Z 00O+[0K
+2026-01-14T18:17:13.551095Z 00O [31;1mERROR: Job failed: exit status 1[0;m
+
+=== End of Job Log ===
+
+
+
+Please analyze the logs and the codebase to fix the failures.
+Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!
