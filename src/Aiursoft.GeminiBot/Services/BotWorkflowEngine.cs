@@ -54,6 +54,18 @@ public class BotWorkflowEngine
 
             await RunGemini(context);
 
+            if (context.SkipCommit)
+            {
+                if (finalizeAsync != null)
+                {
+                    await finalizeAsync(context);
+                }
+                _logger.LogInformation("SkipCommit is true for {WorkspaceName}. Skipping commit and push.",
+                    context.WorkspaceName);
+                context.Result = ProcessResult.Succeeded("Successfully processed without commit");
+                return context;
+            }
+
             if (await HasChanges(context))
             {
                 await CommitChanges(context);

@@ -16,6 +16,7 @@ public class Entry
     private readonly IEnumerable<IVersionControlService> _versionControls;
     private readonly IssueProcessor _issueProcessor;
     private readonly MergeRequestProcessor _mergeRequestProcessor;
+    private readonly MergeRequestReviewerProcessor _mergeRequestReviewerProcessor;
     private readonly ILogger<Entry> _logger;
 
     public Entry(
@@ -23,12 +24,14 @@ public class Entry
         IEnumerable<IVersionControlService> versionControls,
         IssueProcessor issueProcessor,
         MergeRequestProcessor mergeRequestProcessor,
+        MergeRequestReviewerProcessor mergeRequestReviewerProcessor,
         ILogger<Entry> logger)
     {
         _servers = servers.Value;
         _versionControls = versionControls;
         _issueProcessor = issueProcessor;
         _mergeRequestProcessor = mergeRequestProcessor;
+        _mergeRequestReviewerProcessor = mergeRequestReviewerProcessor;
         _logger = logger;
     }
 
@@ -83,6 +86,17 @@ public class Entry
         foreach (var issue in assignedIssues)
         {
             await ProcessIssueAsync(issue, server);
+        }
+
+        // PRIORITY 3: Review merge requests assigned to bot
+        _logger.LogInformation("\n\n================ CHECKING REVIEWS ================\n");
+        try
+        {
+            await _mergeRequestReviewerProcessor.ProcessReviewRequestsAsync(server);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reviewing merge requests for {UserName}", server.UserName);
         }
     }
 
