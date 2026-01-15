@@ -72,8 +72,11 @@ public class MergeRequestReviewerProcessor
         _logger.LogInformation("Checking merge requests where {UserName} is a reviewer on {EndPoint}...", server.UserName, server.EndPoint);
         
         // GitLab API to find MRs where I am a reviewer
-        var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?reviewer_username={server.UserName}&state=opened&per_page=100";
+        // Using scope=reviews_for_me which is the recommended way to get MRs where the authenticated user is a reviewer
+        var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=reviews_for_me&state=opened&per_page=100";
+        _logger.LogInformation("Fetching MRs from URL: {Url}", url);
         var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
+        _logger.LogInformation("Found {Count} MRs from API response", gitLabMrs.Count);
         
         var mrsToReview = new List<MRToProcess>();
         foreach (var mrDto in gitLabMrs)
