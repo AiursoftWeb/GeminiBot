@@ -51,7 +51,7 @@ public class MergeRequestReviewerProcessorTests
         var handler = new FakeHttpMessageHandler((req) =>
         {
             var url = req.RequestUri!.ToString();
-            if (req.Method == HttpMethod.Get && url.Contains("merge_requests") && url.Contains("reviewer_username="))
+            if (req.Method == HttpMethod.Get && url.Contains("merge_requests") && url.Contains("scope=reviews_for_me"))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
