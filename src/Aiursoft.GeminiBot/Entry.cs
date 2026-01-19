@@ -17,6 +17,7 @@ public class Entry
     private readonly IssueProcessor _issueProcessor;
     private readonly MergeRequestProcessor _mergeRequestProcessor;
     private readonly MergeRequestReviewerProcessor _mergeRequestReviewerProcessor;
+    private readonly PipelineProcessor _pipelineProcessor;
     private readonly ILogger<Entry> _logger;
 
     public Entry(
@@ -25,6 +26,7 @@ public class Entry
         IssueProcessor issueProcessor,
         MergeRequestProcessor mergeRequestProcessor,
         MergeRequestReviewerProcessor mergeRequestReviewerProcessor,
+        PipelineProcessor pipelineProcessor,
         ILogger<Entry> logger)
     {
         _servers = servers.Value;
@@ -32,6 +34,7 @@ public class Entry
         _issueProcessor = issueProcessor;
         _mergeRequestProcessor = mergeRequestProcessor;
         _mergeRequestReviewerProcessor = mergeRequestReviewerProcessor;
+        _pipelineProcessor = pipelineProcessor;
         _logger = logger;
     }
 
@@ -97,6 +100,17 @@ public class Entry
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reviewing merge requests for {UserName}", server.UserName);
+        }
+
+        // PRIORITY 4: Check starred projects' pipelines
+        _logger.LogInformation("\n\n================ CHECKING STARRED PROJECTS PIPELINES ================\n");
+        try
+        {
+            await _pipelineProcessor.ProcessStarredProjectsAsync(server);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking pipelines for {UserName}", server.UserName);
         }
     }
 
