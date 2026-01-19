@@ -5,11 +5,9 @@ using Aiursoft.NugetNinja.GitServerBase.Models.Abstractions;
 using Aiursoft.NugetNinja.GitServerBase.Services;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System.Text.Json;
 using System.Net;
-using System.Net.Http.Json;
 
 namespace Aiursoft.GeminiBot.Tests;
 
@@ -33,46 +31,46 @@ public class PipelineProcessorTests
         _loggerMock = new Mock<ILogger<PipelineProcessor>>();
         _httpClientFactoryMock = new Mock<IHttpClientFactory>();
 
-        var handler = new FakeHttpMessageHandler(async (req) =>
+        var handler = new FakeHttpMessageHandler((req) =>
         {
             var url = req.RequestUri!.ToString();
             if (req.Method == HttpMethod.Get && url.Contains("projects?starred=true"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_starredProjects))
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.Contains("/pipelines") && url.Contains("ref="))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_pipelines))
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.Contains("/issues") && url.Contains("search="))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_existingIssues))
-                };
+                });
             }
             if (req.Method == HttpMethod.Get && url.EndsWith("/api/v4/user"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(_botUser))
-                };
+                });
             }
             if (req.Method == HttpMethod.Post && url.Contains("/issues"))
             {
                 _capturedPostRequest = req;
-                return new HttpResponseMessage(HttpStatusCode.Created)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
                 {
                     Content = new StringContent("{}")
-                };
+                });
             }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         });
 
         var client = new HttpClient(handler);
