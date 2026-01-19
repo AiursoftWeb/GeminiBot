@@ -58,6 +58,7 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddTransient<IssueProcessor>();
             services.AddTransient<MergeRequestProcessor>();
             services.AddTransient<MergeRequestReviewerProcessor>();
+            services.AddTransient<PipelineProcessor>();
             services.AddTransient<Entry>();
             services.AddTransient<GeminiCliService>();
             services.AddTaskCanon();

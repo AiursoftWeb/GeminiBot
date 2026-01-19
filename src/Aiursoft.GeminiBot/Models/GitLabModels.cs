@@ -70,6 +70,30 @@ public class GitLabIssueDto
     [JsonPropertyName("iid")]
     public int Iid { get; set; }
 
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = string.Empty;
+
     [JsonPropertyName("state")]
     public string State { get; set; } = string.Empty;
+}
+
+public class GitLabProjectDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("default_branch")]
+    public string DefaultBranch { get; set; } = "master";
+}
+
+public class GitLabPipelineDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
 }
