@@ -470,4 +470,85 @@ public class MergeRequestProcessorTests
         _commandServiceMock.Verify(c => c.RunCommandAsync("git", "fetch origin main", It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<IDictionary<string, string?>>()), Times.Once);
         _commandServiceMock.Verify(c => c.RunCommandAsync("git", "merge origin/main", It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<IDictionary<string, string?>>()), Times.Once);
     }
+
+    [TestMethod]
+    public async Task ProcessMergeRequestsAsync_GeminiFails_DoesNotCommit()
+    {
+        // Arrange
+        var server = new Server
+        {
+            Provider = "GitLab",
+            UserName = "bot-user",
+            Token = "token",
+            EndPoint = "https://gitlab.com",
+            DisplayName = "Bot",
+            UserEmail = "bot@aiursoft.com"
+        };
+
+        var gitLabMr = new GitLabMergeRequestDto
+        {
+            Iid = 1,
+            Title = "Test MR",
+            ProjectId = 101,
+            SourceProjectId = 101,
+            SourceBranch = "fix-bug",
+            TargetBranch = "main",
+            Author = new GitLabUser { Username = "bot-user", Id = 123 }
+        };
+        _gitLabMrList = new List<GitLabMergeRequestDto> { gitLabMr };
+
+        var detailedMr = JsonSerializer.Deserialize<DetailedMergeRequest>(@"
+        {
+            ""HasConflicts"": false,
+            ""MrPipeline"": { ""Status"": ""failed"", ""Id"": 555, ""WebUrl"": ""http://gitlab.com/pipeline/555"" }
+        }", _jsonOptions)!;
+
+        var repository = new Repository
+        {
+            CloneUrl = "https://gitlab.com/bot-user/repo.git",
+            Name = "repo",
+            Owner = new User { Login = "bot-user" }
+        };
+
+        _versionControlMock
+            .Setup(v => v.GetMergeRequestDetails(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(detailedMr);
+
+        _versionControlMock
+            .Setup(v => v.GetRepository(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(repository);
+
+        _versionControlMock
+            .Setup(v => v.GetPipelineJobs(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(new List<PipelineJob>());
+
+        // MOCK GEMINI FAILURE
+        _geminiCliServiceMock
+            .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync(false);
+
+        var workflowEngine = new BotWorkflowEngine(
+            _versionControlMock.Object,
+            _workspaceManagerMock.Object,
+            _geminiCliServiceMock.Object,
+            _commandServiceMock.Object,
+            _options,
+            new Mock<ILogger<BotWorkflowEngine>>().Object);
+
+        var processor = new MergeRequestProcessor(
+            _versionControlMock.Object,
+            workflowEngine,
+            _httpWrapper,
+            _loggerMock.Object);
+
+        // Act
+        var result = await processor.ProcessMergeRequestsAsync(server);
+
+        // Assert
+        Assert.IsTrue(result.Success); // Processor itself succeeds because it handles individual MR failures
+
+        // Verify NO commit and NO push happened
+        _workspaceManagerMock.Verify(w => w.CommitToBranch(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _workspaceManagerMock.Verify(w => w.Push(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
 }
