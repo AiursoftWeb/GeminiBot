@@ -63,17 +63,15 @@ public class Entry
 
     private async Task ProcessServerAsync(Server server, IVersionControlService versionControl)
     {
-        // PRIORITY 1: Check and fix failed merge requests first
-        _logger.LogInformation("\n\n================ CHECKING MERGE REQUESTS ================\n");
-        _logger.LogInformation("Checking merge requests before processing issues...");
-
+        // PRIORITY 1: Check starred projects' pipelines
+        _logger.LogInformation("\n\n================ CHECKING STARRED PROJECTS PIPELINES ================\n");
         try
         {
-            await _mergeRequestProcessor.ProcessMergeRequestsAsync(server);
+            await _pipelineProcessor.ProcessStarredProjectsAsync(server);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking merge requests for {UserName}", server.UserName);
+            _logger.LogError(ex, "Error checking pipelines for {UserName}", server.UserName);
         }
 
         _logger.LogInformation("\n\n================ CHECKING ISSUES ================\n");
@@ -91,7 +89,20 @@ public class Entry
             await ProcessIssueAsync(issue, server);
         }
 
-        // PRIORITY 3: Review merge requests assigned to bot
+        // PRIORITY 3: Check and fix failed merge requests
+        _logger.LogInformation("\n\n================ CHECKING MERGE REQUESTS ================\n");
+        _logger.LogInformation("Checking merge requests before processing issues...");
+
+        try
+        {
+            await _mergeRequestProcessor.ProcessMergeRequestsAsync(server);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking merge requests for {UserName}", server.UserName);
+        }
+
+        // PRIORITY 4: Review merge requests assigned to bot
         _logger.LogInformation("\n\n================ CHECKING REVIEWS ================\n");
         try
         {
@@ -100,17 +111,6 @@ public class Entry
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reviewing merge requests for {UserName}", server.UserName);
-        }
-
-        // PRIORITY 4: Check starred projects' pipelines
-        _logger.LogInformation("\n\n================ CHECKING STARRED PROJECTS PIPELINES ================\n");
-        try
-        {
-            await _pipelineProcessor.ProcessStarredProjectsAsync(server);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking pipelines for {UserName}", server.UserName);
         }
     }
 
