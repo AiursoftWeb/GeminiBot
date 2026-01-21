@@ -179,7 +179,7 @@ public class BotWorkflowEngine
             await _geminiCliService.InvokeGeminiCliAsync(context.WorkspacePath, context.Prompt, context.HideGitFolder);
         if (!success)
         {
-            _logger.LogWarning("Gemini CLI failed. Continuing to see if localization helps...");
+            throw new InvalidOperationException("Gemini CLI failed to complete successfully.");
         }
 
         // Gemini CLI may take a while to finish and flush files.
