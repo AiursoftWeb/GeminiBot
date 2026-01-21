@@ -83,15 +83,15 @@ public class MergeRequestProcessor
         var mrsToProcess = new List<MRToProcess>();
         foreach (var mr in mergeRequests)
         {
-            _logger.LogInformation("Analyzing MR #{IID}: {Title} on {EndPoint} (Project ID: {ProjectId})...", 
+            _logger.LogInformation("Analyzing MR #{IID}: {Title} on {EndPoint} (Project ID: {ProjectId})...",
                 mr.IID, mr.Title, server.EndPoint, mr.ProjectId);
 
             var repository = await _versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
-            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})", 
+            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})",
                 repository.Name, repository.CloneUrl);
-            
+
             var details = await _versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mr.ProjectId, mr.IID);
-            
+
             var hasConflicts = details.HasConflicts;
             var (hasNewHumanReview, discussions, lastBotCommitTime) = await GetReviewDetailsAsync(server, mr);
             var pipelineFailed = details.Pipeline?.Status == "failed";
@@ -106,8 +106,8 @@ public class MergeRequestProcessor
                 if (hasNewHumanReview) reasons.Add("New Human Review/Comments");
                 if (pipelineFailed) reasons.Add("Pipeline Failed");
 
-                _logger.LogInformation("MR #{IID} needs attention due to: {Reasons}. Bot {WritePermission} write permissions to source branch.", 
-                    mr.IID, 
+                _logger.LogInformation("MR #{IID} needs attention due to: {Reasons}. Bot {WritePermission} write permissions to source branch.",
+                    mr.IID,
                     string.Join(", ", reasons),
                     isOthersMr ? "DOES NOT have" : "has");
 
@@ -151,10 +151,10 @@ public class MergeRequestProcessor
             var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
             var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
             var lastBotCommitTime = commits.Where(c => c.Message.Contains("Gemini Bot")).Select(c => c.Created_at).DefaultIfEmpty(DateTime.MinValue).Max();
-            
+
             var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
             var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
-            
+
             var sb = new StringBuilder();
             var hasNewHumanReview = false;
 
@@ -162,7 +162,7 @@ public class MergeRequestProcessor
             {
                 var isBot = string.Equals(note.Author.Username, server.UserName, StringComparison.OrdinalIgnoreCase);
                 var isNew = note.Created_at > lastBotCommitTime;
-                
+
                 if (!isBot && isNew) hasNewHumanReview = true;
 
                 var prefix = isNew ? "[NEW] " : "";
@@ -187,9 +187,9 @@ public class MergeRequestProcessor
             var pipelineProjectId = mr.SourceProjectId > 0 ? mr.SourceProjectId : mr.ProjectId;
             var branchName = mr.SourceBranch ?? throw new InvalidOperationException($"MR #{mr.IID} has no source branch");
             var isOthersMr = server.Provider == "GitLab" && !string.Equals(item.AuthorName, server.UserName, StringComparison.OrdinalIgnoreCase);
-            
+
             var (prompt, commitMessage) = await BuildActionDetailsAsync(item, server, pipelineProjectId);
-            
+
             var context = new WorkflowContext
             {
                 Server = server,
@@ -204,7 +204,7 @@ public class MergeRequestProcessor
                 NeedResolveConflicts = item.HasConflicts
             };
 
-            await _workflowEngine.ExecuteAsync(context, async ctx => 
+            await _workflowEngine.ExecuteAsync(context, async ctx =>
             {
                 if (isOthersMr)
                 {
@@ -235,7 +235,7 @@ Recent discussions and feedback (marked [NEW] if since last bot commit):
 
         if (item.HasConflicts)
             return (BuildConflictPrompt(basePrompt, item.SearchResult, item.TargetBranch), $"Resolve merge conflicts for MR #{item.SearchResult.IID} by merging {item.TargetBranch}\n\nAutomatically generated fix by Gemini Bot.");
-        
+
         if (item.HasNewHumanReview)
             return (BuildReviewPrompt(basePrompt), $"Address human review for MR #{item.SearchResult.IID}\n\nAutomatically generated fix by Gemini Bot.");
 
@@ -243,7 +243,7 @@ Recent discussions and feedback (marked [NEW] if since last bot commit):
         return (BuildFailurePrompt(basePrompt, item.Details, logs), $"Fix pipeline failure for MR #{item.SearchResult.IID}\n\nAutomatically generated fix by Gemini Bot.");
     }
 
-    private string BuildConflictPrompt(string basePrompt, MergeRequestSearchResult mr, string targetBranch) => 
+    private string BuildConflictPrompt(string basePrompt, MergeRequestSearchResult mr, string targetBranch) =>
         $@"{basePrompt}
 Status: CRITICAL - MERGE CONFLICTS DETECTED.
 Target branch '{targetBranch}' has been merged into your current branch '{mr.SourceBranch}', and it resulted in conflicts.
@@ -255,11 +255,9 @@ Your task:
 4. DO NOT make any unrelated changes. Focus ONLY on resolving the conflicts.
 5. You MUST remove all conflict markers before finishing.
 
-I have already triggered the merge for you, so you will see conflict markers in the affected files. Please fix them immediately.
+I have already triggered the merge for you, so you will see conflict markers in the affected files. Please fix them immediately.";
 
-Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
-
-    private string BuildFailurePrompt(string basePrompt, DetailedMergeRequest details, string failureLogs) => 
+    private string BuildFailurePrompt(string basePrompt, DetailedMergeRequest details, string failureLogs) =>
         $@"{basePrompt}
 Status: CI/CD PIPELINE FAILED.
 Pipeline URL: {details.Pipeline?.WebUrl}
@@ -270,7 +268,7 @@ Failure Logs:
 Please analyze the logs and the codebase to fix the failures.
 Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
 
-    private string BuildReviewPrompt(string basePrompt) => 
+    private string BuildReviewPrompt(string basePrompt) =>
         $@"{basePrompt}
 Status: NEW HUMAN REVIEW/COMMENTS.
 A human has provided feedback on this MR. Please address the comments mentioned in the discussions above, especially those marked as [NEW].
@@ -283,7 +281,7 @@ Don't forget to bump the version for updated nuget package projects after necess
         _logger.LogInformation("MR #{IID} - Creating bot fork and new MR...", oldMr.IID);
         var targetRepository = await _versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), string.Empty, ctx.Server.Token);
         await _workflowEngine.EnsureRepositoryForkedAsync(ctx.Server, targetRepository);
-        
+
         var botForkRepository = await _versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), ctx.Server.UserName, ctx.Server.Token);
         var pushPath = _versionControl.GetPushPath(ctx.Server, botForkRepository);
         await _workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
@@ -313,7 +311,7 @@ Don't forget to bump the version for updated nuget package projects after necess
         {
             var userUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/user";
             var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
-            
+
             var updateOldMrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests/{oldMr.IID}?assignee_ids=";
             await _httpWrapper.SendHttpAndGetJson<object>(updateOldMrUrl, HttpMethod.Put, server.Token);
 
