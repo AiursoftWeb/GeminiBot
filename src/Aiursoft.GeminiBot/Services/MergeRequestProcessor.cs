@@ -265,16 +265,14 @@ Pipeline URL: {details.Pipeline?.WebUrl}
 Failure Logs:
 {failureLogs}
 
-Please analyze the logs and the codebase to fix the failures.
-Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
+Please analyze the logs and the codebase to fix the failures.";
 
     private string BuildReviewPrompt(string basePrompt) =>
         $@"{basePrompt}
 Status: NEW HUMAN REVIEW/COMMENTS.
 A human has provided feedback on this MR. Please address the comments mentioned in the discussions above, especially those marked as [NEW].
 
-Please analyze the feedback and make the necessary changes.
-Don't forget to bump the version for updated nuget package projects after necessary changes, while do NOT add a version tag for projects doesn't publish nuget packages!";
+Please analyze the feedback and make the necessary changes.";
 
     private async Task HandleOthersMrFinalizeAsync(WorkflowContext ctx, MergeRequestSearchResult oldMr, string targetBranch)
     {
