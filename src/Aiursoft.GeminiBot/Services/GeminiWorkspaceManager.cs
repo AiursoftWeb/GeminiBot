@@ -20,7 +20,9 @@ public class GeminiWorkspaceManager : IGeminiWorkspaceManager
 
     public Task<bool> CommitToBranch(string path, string message, string branch)
     {
-        return _workspaceManager.CommitToBranch(path, message, branch);
+        // Fix for issue #20: Escape double quotes to prevent git commit failure
+        var escapedMessage = message.Replace("\"", "\\\"");
+        return _workspaceManager.CommitToBranch(path, escapedMessage, branch);
     }
 
     public Task<bool> PendingCommit(string path)
