@@ -82,7 +82,7 @@ public class PipelineProcessor
             if (latestPipeline != null && latestPipeline.Status == "failed")
             {
                 _logger.LogWarning("Pipeline failed for {ProjectName} on branch {Branch}. Checking if issue already exists...", project.Name, project.DefaultBranch);
-                
+
                 var issueTitle = "主分支的编译管道失败";
                 if (await IssueAlreadyExistsAsync(server, project.Id, issueTitle))
                 {
@@ -120,14 +120,14 @@ public class PipelineProcessor
         var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{projectId}/issues";
         using var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", server.Token);
-        
+
         var response = await client.PostAsJsonAsync(url, new
         {
             title,
             description,
             assignee_ids = new[] { user.Id }
         });
-        
+
         if (response.IsSuccessStatusCode)
         {
             _logger.LogInformation("Successfully created and assigned issue in project {ProjectId}", projectId);

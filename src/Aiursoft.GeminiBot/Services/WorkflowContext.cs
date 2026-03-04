@@ -19,7 +19,7 @@ public class WorkflowContext
     public string PushBranch { get; set; } = string.Empty;
     public bool NeedResolveConflicts { get; set; }
     public bool SkipCommit { get; set; }
-    
+
     // Derived/State data
     public Repository? Repository { get; set; }
     public string WorkspacePath { get; set; } = string.Empty;

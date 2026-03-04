@@ -1,4 +1,4 @@
-﻿using Aiursoft.Canon;
+using Aiursoft.Canon;
 using Aiursoft.GeminiBot;
 using Aiursoft.GitRunner;
 using Aiursoft.GeminiBot.Configuration;
