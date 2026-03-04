@@ -71,7 +71,11 @@ public class MergeRequestProcessor
             foreach (var m in gitLabMrs) targetBranches[m.Iid] = m.TargetBranch;
             mergeRequests = gitLabMrs.Select(m => new MergeRequestSearchResult
             {
-                IID = m.Iid, Title = m.Title, ProjectId = m.ProjectId, SourceProjectId = m.SourceProjectId, SourceBranch = m.SourceBranch
+                IID = m.Iid,
+                Title = m.Title,
+                ProjectId = m.ProjectId,
+                SourceProjectId = m.SourceProjectId,
+                SourceBranch = m.SourceBranch
             }).ToList();
         }
         else

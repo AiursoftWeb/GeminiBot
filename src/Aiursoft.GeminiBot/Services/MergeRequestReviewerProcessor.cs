@@ -70,18 +70,18 @@ public class MergeRequestReviewerProcessor
     private async Task<List<MRToProcess>> IdentifyMergeRequestsToReviewAsync(Server server)
     {
         _logger.LogInformation("Checking merge requests where {UserName} is a reviewer on {EndPoint}...", server.UserName, server.EndPoint);
-        
+
         // GitLab API to find MRs where I am a reviewer
         // Using scope=reviews_for_me which is the recommended way to get MRs where the authenticated user is a reviewer
         var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=reviews_for_me&state=opened&per_page=100";
         _logger.LogInformation("Fetching MRs from URL: {Url}", url);
         var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
         _logger.LogInformation("Found {Count} MRs from API response", gitLabMrs.Count);
-        
+
         var mrsToReview = new List<MRToProcess>();
         foreach (var mrDto in gitLabMrs)
         {
-            _logger.LogInformation("Analyzing MR #{IID} for review: {Title} on {EndPoint} (Project ID: {ProjectId})...", 
+            _logger.LogInformation("Analyzing MR #{IID} for review: {Title} on {EndPoint} (Project ID: {ProjectId})...",
                 mrDto.Iid, mrDto.Title, server.EndPoint, mrDto.ProjectId);
 
             var mrSearchResult = new MergeRequestSearchResult
@@ -94,7 +94,7 @@ public class MergeRequestReviewerProcessor
             };
 
             var (needsReview, discussions, lastBotReviewTime) = await CheckIfNeedsReviewAsync(server, mrSearchResult);
-            
+
             if (needsReview)
             {
                 _logger.LogInformation("MR #{IID} needs review.", mrDto.Iid);
@@ -126,11 +126,11 @@ public class MergeRequestReviewerProcessor
             var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
             var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
             var lastCommitTime = commits.Select(c => c.Created_at).DefaultIfEmpty(DateTime.MinValue).Max();
-            
+
             // Get discussions to find last bot review
             var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
             var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
-            
+
             var sb = new StringBuilder();
             var lastBotReviewTime = DateTime.MinValue;
 
@@ -163,9 +163,9 @@ public class MergeRequestReviewerProcessor
             _logger.LogInformation("Reviewing MR #{IID}: {Title}", mr.IID, mr.Title);
             var pipelineProjectId = mr.SourceProjectId > 0 ? mr.SourceProjectId : mr.ProjectId;
             var branchName = mr.SourceBranch ?? throw new InvalidOperationException($"MR #{mr.IID} has no source branch");
-            
+
             var prompt = BuildReviewPrompt(item);
-            
+
             var context = new WorkflowContext
             {
                 Server = server,
@@ -182,7 +182,7 @@ public class MergeRequestReviewerProcessor
             };
 
             // We use the engine to clone and run Gemini, but we override the finalization
-            await _workflowEngine.ExecuteAsync(context, async ctx => 
+            await _workflowEngine.ExecuteAsync(context, async ctx =>
             {
                 var reviewFilePath = Path.Combine(ctx.WorkspacePath, "review.md");
                 if (File.Exists(reviewFilePath))
@@ -233,7 +233,7 @@ Please write your review into 'review.md' now.";
     {
         _logger.LogInformation("Posting review comment to MR #{IID}...", mrIid);
         var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{projectId}/merge_requests/{mrIid}/notes";
-        
+
         using var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", server.Token);
         var response = await client.PostAsJsonAsync(url, new { body = content });

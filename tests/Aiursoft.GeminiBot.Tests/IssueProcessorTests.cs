@@ -40,7 +40,7 @@ public class IssueProcessorTests
         _versionControlMock = new Mock<IVersionControlService>();
         _workspaceManagerMock = new Mock<IGeminiWorkspaceManager>();
         _workflowLoggerMock = new Mock<ILogger<BotWorkflowEngine>>();
-        
+
         _geminiCliServiceMock = new Mock<GeminiCliService>(
             _commandServiceMock.Object,
             _options,
@@ -116,21 +116,21 @@ public class IssueProcessorTests
             }
             if (url.EndsWith("/issues/1")) // Check if issue is open
             {
-                 return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(issueDetails))
                 };
             }
             if (url.EndsWith("/user"))
             {
-                 return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(new GitLabUser { Id = 123, Username = "bot-user" }))
                 };
             }
             if (url.Contains("/merge_requests")) // Check MRs for assignment
             {
-                 return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("[]")
                 };
@@ -143,13 +143,13 @@ public class IssueProcessorTests
 
         _versionControlMock.Setup(v => v.GetRepository(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(repository);
-        
+
         _versionControlMock.Setup(v => v.HasOpenPullRequestForIssue(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>()))
             .ReturnsAsync(false);
-            
+
         _versionControlMock.Setup(v => v.RepoExists(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(true);
-        
+
         _versionControlMock.Setup(v => v.GetPushPath(It.IsAny<Server>(), It.IsAny<Repository>()))
             .Returns("https://gitlab.com/owner/repo.git");
 
@@ -177,10 +177,10 @@ public class IssueProcessorTests
         // Assert
         _geminiCliServiceMock.Verify(g => g.InvokeGeminiCliAsync(
             It.IsAny<string>(),
-            It.Is<string>(prompt => 
-                prompt.Contains("Comment by @user1") && 
-                prompt.Contains("First comment") && 
-                prompt.Contains("Comment by @user2") && 
+            It.Is<string>(prompt =>
+                prompt.Contains("Comment by @user1") &&
+                prompt.Contains("First comment") &&
+                prompt.Contains("Comment by @user2") &&
                 prompt.Contains("Second comment") &&
                 !prompt.Contains("System note")), // System notes should be filtered
             It.IsAny<bool>()), Times.Once);

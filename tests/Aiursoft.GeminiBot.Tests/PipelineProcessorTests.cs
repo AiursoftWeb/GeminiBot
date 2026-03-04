@@ -123,7 +123,7 @@ public class PipelineProcessorTests
         // Assert
         Assert.IsTrue(result.Success);
         Assert.IsNotNull(_capturedPostRequest);
-        
+
         var body = await _capturedPostRequest.Content!.ReadAsStringAsync();
         StringAssert.Contains(body, "主分支的编译管道失败");
         StringAssert.Contains(body, "Build error log");

@@ -1,4 +1,4 @@
-﻿using Aiursoft.GeminiBot.Services;
+using Aiursoft.GeminiBot.Services;
 using Aiursoft.NugetNinja.GitServerBase.Models;
 using Aiursoft.NugetNinja.GitServerBase.Services.Providers;
 using Microsoft.Extensions.Logging;
