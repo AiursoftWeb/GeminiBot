@@ -140,7 +140,7 @@ public class MergeRequestReviewerProcessorTests
             {
                 File.WriteAllText(Path.Combine(path, "review.md"), "This is a great MR!");
             })
-            .ReturnsAsync(true);
+            .ReturnsAsync((true, "Gemini reviewed", ""));
 
         _workspaceManagerMock
             .Setup(w => w.PendingCommit(It.IsAny<string>()))

@@ -157,7 +157,7 @@ public class IssueProcessorTests
             .ReturnsAsync(new List<PullRequest>());
 
         _geminiCliServiceMock.Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync((true, "Gemini output", ""));
 
         _workspaceManagerMock.Setup(w => w.PendingCommit(It.IsAny<string>())).ReturnsAsync(false); // No changes to verify simple flow
 
