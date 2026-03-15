@@ -175,10 +175,12 @@ public class BotWorkflowEngine
     private async Task RunGemini(WorkflowContext context)
     {
         _logger.LogInformation("Invoking Gemini CLI...");
-        var success =
+        var (success, output, error) =
             await _geminiCliService.InvokeGeminiCliAsync(context.WorkspacePath, context.Prompt, context.HideGitFolder);
+        context.GeminiOutput = output;
         if (!success)
         {
+            _logger.LogError("Gemini CLI failed to complete successfully. Output: {Output}. Error: {Error}", output, error);
             throw new InvalidOperationException("Gemini CLI failed to complete successfully.");
         }
 

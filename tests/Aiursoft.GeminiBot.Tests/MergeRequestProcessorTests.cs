@@ -191,7 +191,7 @@ public class MergeRequestProcessorTests
 
         _geminiCliServiceMock
             .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync((true, "Gemini output", ""));
 
         _workspaceManagerMock
             .Setup(w => w.PendingCommit(It.IsAny<string>()))
@@ -309,7 +309,7 @@ public class MergeRequestProcessorTests
 
         _geminiCliServiceMock
             .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync((true, "Gemini output", ""));
 
         _workspaceManagerMock
             .Setup(w => w.PendingCommit(It.IsAny<string>()))
@@ -405,7 +405,7 @@ public class MergeRequestProcessorTests
 
         _geminiCliServiceMock
             .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync((true, "Gemini output", ""));
 
         _workspaceManagerMock
             .Setup(w => w.PendingCommit(It.IsAny<string>()))
@@ -525,7 +525,7 @@ public class MergeRequestProcessorTests
         // MOCK GEMINI FAILURE
         _geminiCliServiceMock
             .Setup(g => g.InvokeGeminiCliAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync((false, "Gemini failed", "Error message"));
 
         var workflowEngine = new BotWorkflowEngine(
             _versionControlMock.Object,

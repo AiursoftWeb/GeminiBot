@@ -32,7 +32,7 @@ public class GeminiCliService
     /// <param name="taskDescription">The task description to pass to Gemini CLI.</param>
     /// <param name="hideGitFolder">If true, hides .git folder to prevent Gemini from manipulating git. If false, allows Gemini to see git history.</param>
     /// <returns>True if Gemini CLI completed successfully, false otherwise.</returns>
-    public virtual async Task<bool> InvokeGeminiCliAsync(string workPath, string taskDescription, bool hideGitFolder)
+    public virtual async Task<(bool Success, string Output, string Error)> InvokeGeminiCliAsync(string workPath, string taskDescription, bool hideGitFolder)
     {
         string? tempFile = null;
         var gitPath = Path.Combine(workPath, ".git");
@@ -85,11 +85,11 @@ public class GeminiCliService
             if (code != 0)
             {
                 _logger.LogError("Gemini CLI failed with exit code {Code}. Output: {Output}. Error: {Error}", code, output, error);
-                return false;
+                return (false, output, error);
             }
 
             _logger.LogInformation("Gemini CLI completed successfully. It says: {Output}", output);
-            return true;
+            return (true, output, error);
         }
         finally
         {

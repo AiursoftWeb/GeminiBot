@@ -19,6 +19,7 @@ public class WorkflowContext
     public string PushBranch { get; set; } = string.Empty;
     public bool NeedResolveConflicts { get; set; }
     public bool SkipCommit { get; set; }
+    public string GeminiOutput { get; set; } = string.Empty;
 
     // Derived/State data
     public Repository? Repository { get; set; }
