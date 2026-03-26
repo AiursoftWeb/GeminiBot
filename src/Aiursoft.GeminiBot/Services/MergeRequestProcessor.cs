@@ -11,25 +11,12 @@ namespace Aiursoft.GeminiBot.Services;
 /// <summary>
 /// Handles checking and fixing failed merge requests.
 /// </summary>
-public class MergeRequestProcessor
+public class MergeRequestProcessor(
+    IVersionControlService versionControl,
+    BotWorkflowEngine workflowEngine,
+    HttpWrapper httpWrapper,
+    ILogger<MergeRequestProcessor> logger)
 {
-    private readonly IVersionControlService _versionControl;
-    private readonly BotWorkflowEngine _workflowEngine;
-    private readonly HttpWrapper _httpWrapper;
-    private readonly ILogger<MergeRequestProcessor> _logger;
-
-    public MergeRequestProcessor(
-        IVersionControlService versionControl,
-        BotWorkflowEngine workflowEngine,
-        HttpWrapper httpWrapper,
-        ILogger<MergeRequestProcessor> logger)
-    {
-        _versionControl = versionControl;
-        _workflowEngine = workflowEngine;
-        _httpWrapper = httpWrapper;
-        _logger = logger;
-    }
-
     public async Task<ProcessResult> ProcessMergeRequestsAsync(Server server)
     {
         try
@@ -37,11 +24,11 @@ public class MergeRequestProcessor
             var mrsToProcess = await IdentifyMergeRequestsToProcessAsync(server);
             if (mrsToProcess.Count == 0)
             {
-                _logger.LogInformation("No merge requests need attention. All clear!");
+                logger.LogInformation("No merge requests need attention. All clear!");
                 return ProcessResult.Succeeded("No MRs to fix");
             }
 
-            _logger.LogInformation("Found {Count} merge requests to fix", mrsToProcess.Count);
+            logger.LogInformation("Found {Count} merge requests to fix", mrsToProcess.Count);
 
             foreach (var item in mrsToProcess)
             {
@@ -52,7 +39,7 @@ public class MergeRequestProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing merge requests");
+            logger.LogError(ex, "Error processing merge requests");
             return ProcessResult.Failed("Error processing merge requests", ex);
         }
     }
@@ -65,9 +52,9 @@ public class MergeRequestProcessor
 
         if (server.Provider == "GitLab")
         {
-            _logger.LogInformation("Checking merge requests assigned to {UserName} on {EndPoint}...", server.UserName, server.EndPoint);
+            logger.LogInformation("Checking merge requests assigned to {UserName} on {EndPoint}...", server.UserName, server.EndPoint);
             var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=assigned_to_me&state=opened&per_page=100";
-            gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
+            gitLabMrs = await httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
             foreach (var m in gitLabMrs) targetBranches[m.Iid] = m.TargetBranch;
             mergeRequests = gitLabMrs.Select(m => new MergeRequestSearchResult
             {
@@ -80,21 +67,21 @@ public class MergeRequestProcessor
         }
         else
         {
-            _logger.LogInformation("Checking merge requests submitted by {UserName} on {EndPoint}...", server.UserName, server.EndPoint);
-            mergeRequests = await _versionControl.GetOpenMergeRequests(server.EndPoint, server.UserName, server.Token);
+            logger.LogInformation("Checking merge requests submitted by {UserName} on {EndPoint}...", server.UserName, server.EndPoint);
+            mergeRequests = await versionControl.GetOpenMergeRequests(server.EndPoint, server.UserName, server.Token);
         }
 
         var mrsToProcess = new List<MRToProcess>();
         foreach (var mr in mergeRequests)
         {
-            _logger.LogInformation("Analyzing MR #{IID}: {Title} on {EndPoint} (Project ID: {ProjectId})...",
+            logger.LogInformation("Analyzing MR #{IID}: {Title} on {EndPoint} (Project ID: {ProjectId})...",
                 mr.IID, mr.Title, server.EndPoint, mr.ProjectId);
 
-            var repository = await _versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
-            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})",
+            var repository = await versionControl.GetRepository(server.EndPoint, mr.ProjectId.ToString(), string.Empty, server.Token);
+            logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})",
                 repository.Name, repository.CloneUrl);
 
-            var details = await _versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mr.ProjectId, mr.IID);
+            var details = await versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mr.ProjectId, mr.IID);
 
             var hasConflicts = details.HasConflicts;
             var (hasNewHumanReview, discussions, lastBotCommitTime) = await GetReviewDetailsAsync(server, mr);
@@ -110,7 +97,7 @@ public class MergeRequestProcessor
                 if (hasNewHumanReview) reasons.Add("New Human Review/Comments");
                 if (pipelineFailed) reasons.Add("Pipeline Failed");
 
-                _logger.LogInformation("MR #{IID} needs attention due to: {Reasons}. Bot {WritePermission} write permissions to source branch.",
+                logger.LogInformation("MR #{IID} needs attention due to: {Reasons}. Bot {WritePermission} write permissions to source branch.",
                     mr.IID,
                     string.Join(", ", reasons),
                     isOthersMr ? "DOES NOT have" : "has");
@@ -141,7 +128,7 @@ public class MergeRequestProcessor
             }
             else
             {
-                _logger.LogInformation("MR #{IID} is in good shape. Skipping.", mr.IID);
+                logger.LogInformation("MR #{IID} is in good shape. Skipping.", mr.IID);
             }
         }
         return mrsToProcess;
@@ -153,11 +140,11 @@ public class MergeRequestProcessor
         try
         {
             var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
-            var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
+            var commits = await httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
             var lastBotCommitTime = commits.Where(c => c.Message.Contains("Gemini Bot")).Select(c => c.Created_at).DefaultIfEmpty(DateTime.MinValue).Max();
 
             var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
-            var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
+            var discussions = await httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
 
             var sb = new StringBuilder();
             var hasNewHumanReview = false;
@@ -177,7 +164,7 @@ public class MergeRequestProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch review details for MR #{IID}", mr.IID);
+            logger.LogWarning(ex, "Failed to fetch review details for MR #{IID}", mr.IID);
             return (false, string.Empty, DateTime.MinValue);
         }
     }
@@ -187,7 +174,7 @@ public class MergeRequestProcessor
         var mr = item.SearchResult;
         try
         {
-            _logger.LogInformation("Processing MR #{IID}: {Title}", mr.IID, mr.Title);
+            logger.LogInformation("Processing MR #{IID}: {Title}", mr.IID, mr.Title);
             var pipelineProjectId = mr.SourceProjectId > 0 ? mr.SourceProjectId : mr.ProjectId;
             var branchName = mr.SourceBranch ?? throw new InvalidOperationException($"MR #{mr.IID} has no source branch");
             var isOthersMr = server.Provider == "GitLab" && !string.Equals(item.AuthorName, server.UserName, StringComparison.OrdinalIgnoreCase);
@@ -208,7 +195,7 @@ public class MergeRequestProcessor
                 NeedResolveConflicts = item.HasConflicts
             };
 
-            await _workflowEngine.ExecuteAsync(context, async ctx =>
+            await workflowEngine.ExecuteAsync(context, async ctx =>
             {
                 if (isOthersMr)
                 {
@@ -216,14 +203,14 @@ public class MergeRequestProcessor
                 }
                 else
                 {
-                    var pushPath = _versionControl.GetPushPath(server, ctx.Repository!);
-                    await _workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
+                    var pushPath = versionControl.GetPushPath(server, ctx.Repository!);
+                    await workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
                 }
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fixing MR #{IID}", mr.IID);
+            logger.LogError(ex, "Error fixing MR #{IID}", mr.IID);
         }
     }
 
@@ -281,13 +268,13 @@ Please analyze the feedback and make the necessary changes.";
 
     private async Task HandleOthersMrFinalizeAsync(WorkflowContext ctx, MergeRequestSearchResult oldMr, string targetBranch, string geminiOutput)
     {
-        _logger.LogInformation("MR #{IID} - Creating bot fork and new MR...", oldMr.IID);
-        var targetRepository = await _versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), string.Empty, ctx.Server.Token);
-        await _workflowEngine.EnsureRepositoryForkedAsync(ctx.Server, targetRepository);
+        logger.LogInformation("MR #{IID} - Creating bot fork and new MR...", oldMr.IID);
+        var targetRepository = await versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), string.Empty, ctx.Server.Token);
+        await workflowEngine.EnsureRepositoryForkedAsync(ctx.Server, targetRepository);
 
-        var botForkRepository = await _versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), ctx.Server.UserName, ctx.Server.Token);
-        var pushPath = _versionControl.GetPushPath(ctx.Server, botForkRepository);
-        await _workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
+        var botForkRepository = await versionControl.GetRepository(ctx.Server.EndPoint, oldMr.ProjectId.ToString(), ctx.Server.UserName, ctx.Server.Token);
+        var pushPath = versionControl.GetPushPath(ctx.Server, botForkRepository);
+        await workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
 
         await CreateNewMergeRequestAsync(ctx.Server, targetRepository, oldMr, targetBranch, ctx.PushBranch, geminiOutput);
     }
@@ -311,7 +298,7 @@ This merge request contains automated fixes generated by the Gemini Bot.
 
 Please review carefully before merging.";
 
-        await _versionControl.CreatePullRequest(server.EndPoint, ownerLogin, repoName, $"{server.UserName}:{botBranchName}", targetBranch, title, body, server.Token);
+        await versionControl.CreatePullRequest(server.EndPoint, ownerLogin, repoName, $"{server.UserName}:{botBranchName}", targetBranch, title, body, server.Token);
 
         if (server.Provider == "GitLab")
         {
@@ -324,34 +311,34 @@ Please review carefully before merging.";
         try
         {
             var userUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/user";
-            var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
+            var user = await httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
 
             var updateOldMrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests/{oldMr.IID}?assignee_ids=";
-            await _httpWrapper.SendHttpAndGetJson<object>(updateOldMrUrl, HttpMethod.Put, server.Token);
+            await httpWrapper.SendHttpAndGetJson<object>(updateOldMrUrl, HttpMethod.Put, server.Token);
 
             var mrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests?state=opened&source_branch={botBranchName}";
-            var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
+            var mrs = await httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
             var newMr = mrs.FirstOrDefault();
 
             if (newMr != null)
             {
                 var updateNewMrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{oldMr.ProjectId}/merge_requests/{newMr.Iid}?assignee_ids={user.Id}";
-                await _httpWrapper.SendHttpAndGetJson<object>(updateNewMrUrl, HttpMethod.Put, server.Token);
+                await httpWrapper.SendHttpAndGetJson<object>(updateNewMrUrl, HttpMethod.Put, server.Token);
             }
         }
-        catch (Exception ex) { _logger.LogError(ex, "Failed to manage MR assignments in GitLab"); }
+        catch (Exception ex) { logger.LogError(ex, "Failed to manage MR assignments in GitLab"); }
     }
 
     private async Task<string> GetFailureLogsAsync(Server server, int projectId, int pipelineId)
     {
         try
         {
-            var jobs = await _versionControl.GetPipelineJobs(server.EndPoint, server.Token, projectId, pipelineId);
+            var jobs = await versionControl.GetPipelineJobs(server.EndPoint, server.Token, projectId, pipelineId);
             var failedJobs = jobs.Where(j => j.Status == "failed").ToList();
             var allLogs = new StringBuilder();
             foreach (var job in failedJobs)
             {
-                var log = await _versionControl.GetJobLog(server.EndPoint, server.Token, projectId, job.Id);
+                var log = await versionControl.GetJobLog(server.EndPoint, server.Token, projectId, job.Id);
                 if (!string.IsNullOrWhiteSpace(log))
                 {
                     allLogs.AppendLine($"\n\n=== Job: {job.Name} (Stage: {job.Stage}) ===");
@@ -361,6 +348,6 @@ Please review carefully before merging.";
             }
             return allLogs.ToString();
         }
-        catch (Exception ex) { _logger.LogError(ex, "Error getting failure logs for pipeline {PipelineId}", pipelineId); return string.Empty; }
+        catch (Exception ex) { logger.LogError(ex, "Error getting failure logs for pipeline {PipelineId}", pipelineId); return string.Empty; }
     }
 }

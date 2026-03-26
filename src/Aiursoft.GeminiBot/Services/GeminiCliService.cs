@@ -9,21 +9,12 @@ namespace Aiursoft.GeminiBot.Services;
 /// Service responsible for invoking the Gemini CLI to process code changes.
 /// Handles task file creation, .git directory management, and CLI execution.
 /// </summary>
-public class GeminiCliService
+public class GeminiCliService(
+    IGeminiCommandService commandService,
+    IOptions<GeminiBotOptions> options,
+    ILogger<GeminiCliService> logger)
 {
-    private readonly IGeminiCommandService _commandService;
-    private readonly GeminiBotOptions _options;
-    private readonly ILogger<GeminiCliService> _logger;
-
-    public GeminiCliService(
-        IGeminiCommandService commandService,
-        IOptions<GeminiBotOptions> options,
-        ILogger<GeminiCliService> logger)
-    {
-        _commandService = commandService;
-        _options = options.Value;
-        _logger = logger;
-    }
+    private readonly GeminiBotOptions _options = options.Value;
 
     /// <summary>
     /// Invoke Gemini CLI to fix the code based on the task description.
@@ -47,15 +38,15 @@ public class GeminiCliService
             // Hide .git directory to prevent Gemini from manipulating git (if requested)
             if (hideGitFolder && Directory.Exists(gitPath))
             {
-                _logger.LogInformation("Hiding .git directory to prevent Gemini CLI from manipulating git...");
+                logger.LogInformation("Hiding .git directory to prevent Gemini CLI from manipulating git...");
                 Directory.Move(gitPath, gitBackupPath);
             }
             else if (!hideGitFolder)
             {
-                _logger.LogInformation(".git directory is accessible to Gemini CLI for viewing history");
+                logger.LogInformation(".git directory is accessible to Gemini CLI for viewing history");
             }
 
-            _logger.LogInformation("Running Gemini CLI in {WorkPath}", workPath);
+            logger.LogInformation("Running Gemini CLI in {WorkPath}", workPath);
 
             // Build Gemini command with optional --model parameter
             var geminiCommand = "gemini --yolo";
@@ -75,7 +66,7 @@ public class GeminiCliService
                 };
             }
 
-            var (code, output, error) = await _commandService.RunCommandAsync(
+            var (code, output, error) = await commandService.RunCommandAsync(
                 bin: "/bin/bash",
                 arg: $"-c \"{geminiCommand}\"",
                 path: workPath,
@@ -84,11 +75,11 @@ public class GeminiCliService
 
             if (code != 0)
             {
-                _logger.LogError("Gemini CLI failed with exit code {Code}. Output: {Output}. Error: {Error}", code, output, error);
+                logger.LogError("Gemini CLI failed with exit code {Code}. Output: {Output}. Error: {Error}", code, output, error);
                 return (false, output, error);
             }
 
-            _logger.LogInformation("Gemini CLI completed successfully. It says: {Output}", output);
+            logger.LogInformation("Gemini CLI completed successfully. It says: {Output}", output);
             return (true, output, error);
         }
         finally
@@ -98,7 +89,7 @@ public class GeminiCliService
             {
                 try
                 {
-                    _logger.LogInformation("Restoring .git directory...");
+                    logger.LogInformation("Restoring .git directory...");
                     if (Directory.Exists(gitPath))
                     {
                         Directory.Delete(gitPath, recursive: true);
@@ -107,7 +98,7 @@ public class GeminiCliService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to restore .git directory from backup!");
+                    logger.LogError(ex, "Failed to restore .git directory from backup!");
                 }
             }
 
@@ -120,7 +111,7 @@ public class GeminiCliService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete temporary file: {FilePath}", tempFile);
+                    logger.LogWarning(ex, "Failed to delete temporary file: {FilePath}", tempFile);
                 }
             }
         }

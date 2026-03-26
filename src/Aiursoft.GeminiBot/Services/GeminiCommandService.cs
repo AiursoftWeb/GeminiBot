@@ -3,15 +3,8 @@ using Aiursoft.GeminiBot.Services.Abstractions;
 
 namespace Aiursoft.GeminiBot.Services;
 
-public class GeminiCommandService : IGeminiCommandService
+public class GeminiCommandService(CommandService commandService) : IGeminiCommandService
 {
-    private readonly CommandService _commandService;
-
-    public GeminiCommandService(CommandService commandService)
-    {
-        _commandService = commandService;
-    }
-
     public Task<(int exitCode, string output, string error)> RunCommandAsync(
         string bin,
         string arg,
@@ -20,6 +13,6 @@ public class GeminiCommandService : IGeminiCommandService
         bool useShell = false,
         IDictionary<string, string?>? environmentVariables = null)
     {
-        return _commandService.RunCommandAsync(bin, arg, path, timeout, useShell, environmentVariables);
+        return commandService.RunCommandAsync(bin, arg, path, timeout, useShell, environmentVariables);
     }
 }

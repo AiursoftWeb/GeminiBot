@@ -9,56 +9,43 @@ namespace Aiursoft.GeminiBot.Services;
 /// <summary>
 /// Encapsulates the business logic for processing GitLab issues.
 /// </summary>
-public class IssueProcessor
+public class IssueProcessor(
+    IVersionControlService versionControl,
+    BotWorkflowEngine workflowEngine,
+    HttpWrapper httpWrapper,
+    ILogger<IssueProcessor> logger)
 {
-    private readonly IVersionControlService _versionControl;
-    private readonly BotWorkflowEngine _workflowEngine;
-    private readonly HttpWrapper _httpWrapper;
-    private readonly ILogger<IssueProcessor> _logger;
-
-    public IssueProcessor(
-        IVersionControlService versionControl,
-        BotWorkflowEngine workflowEngine,
-        HttpWrapper httpWrapper,
-        ILogger<IssueProcessor> logger)
-    {
-        _versionControl = versionControl;
-        _workflowEngine = workflowEngine;
-        _httpWrapper = httpWrapper;
-        _logger = logger;
-    }
-
     public async Task<ProcessResult> ProcessAsync(Issue issue, Server server)
     {
         try
         {
             ValidateIssue(issue);
-            _logger.LogInformation("Analyzing Issue #{IssueId}: {Title} on {EndPoint} (Project ID: {ProjectId})...",
+            logger.LogInformation("Analyzing Issue #{IssueId}: {Title} on {EndPoint} (Project ID: {ProjectId})...",
                 issue.Iid, issue.Title, server.EndPoint, issue.ProjectId);
 
             // Fetch repository details as early as possible for better logging and context.
-            var repository = await _versionControl.GetRepository(
+            var repository = await versionControl.GetRepository(
                 server.EndPoint,
                 issue.ProjectId.ToString(),
                 string.Empty,
                 server.Token);
 
-            _logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})",
+            logger.LogInformation("Working on repository: {RepoName} ({RepoUrl})",
                 repository.Name, repository.CloneUrl);
 
-            if (await _versionControl.HasOpenPullRequestForIssue(server.EndPoint, issue.ProjectId, issue.Iid, server.Token))
+            if (await versionControl.HasOpenPullRequestForIssue(server.EndPoint, issue.ProjectId, issue.Iid, server.Token))
             {
-                _logger.LogInformation("Issue #{IssueId} already has an open PR/MR. Skipping to avoid duplicate work.", issue.Iid);
+                logger.LogInformation("Issue #{IssueId} already has an open PR/MR. Skipping to avoid duplicate work.", issue.Iid);
                 return ProcessResult.Skipped("Issue already has an open PR/MR");
             }
 
             if (!await IsIssueOpenAsync(server, issue))
             {
-                _logger.LogInformation("Issue #{IssueId} is already closed. Skipping.", issue.Iid);
+                logger.LogInformation("Issue #{IssueId} is already closed. Skipping.", issue.Iid);
                 return ProcessResult.Skipped("Issue is already closed");
             }
 
-            _logger.LogInformation("Issue #{IssueId} needs attention. Bot will create a fork and a new MR.", issue.Iid);
+            logger.LogInformation("Issue #{IssueId} needs attention. Bot will create a fork and a new MR.", issue.Iid);
 
             var defaultBranch = repository.DefaultBranch ?? "master"; // Fallback to master if null
 
@@ -76,11 +63,11 @@ public class IssueProcessor
                 HideGitFolder = true
             };
 
-            await _workflowEngine.ExecuteAsync(context, async ctx =>
+            await workflowEngine.ExecuteAsync(context, async ctx =>
             {
-                await _workflowEngine.EnsureRepositoryForkedAsync(server, ctx.Repository!);
-                var pushPath = _versionControl.GetPushPath(server, ctx.Repository!);
-                await _workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
+                await workflowEngine.EnsureRepositoryForkedAsync(server, ctx.Repository!);
+                var pushPath = versionControl.GetPushPath(server, ctx.Repository!);
+                await workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
 
                 if (await IsIssueOpenAsync(server, issue))
                 {
@@ -88,7 +75,7 @@ public class IssueProcessor
                 }
                 else
                 {
-                    _logger.LogWarning("Issue #{IssueId} has been closed while processing. Skipping pull request creation.", issue.Iid);
+                    logger.LogWarning("Issue #{IssueId} has been closed while processing. Skipping pull request creation.", issue.Iid);
                 }
             });
 
@@ -96,7 +83,7 @@ public class IssueProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing issue #{IssueIid}", issue.Iid);
+            logger.LogError(ex, "Error processing issue #{IssueIid}", issue.Iid);
             return ProcessResult.Failed($"Error processing issue #{issue.Iid}", ex);
         }
     }
@@ -111,7 +98,7 @@ public class IssueProcessor
         try
         {
             var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/issues/{issue.Iid}/notes?sort=asc&order_by=created_at";
-            var notes = await _httpWrapper.SendHttpAndGetJson<List<GitLabNote>>(url, HttpMethod.Get, server.Token);
+            var notes = await httpWrapper.SendHttpAndGetJson<List<GitLabNote>>(url, HttpMethod.Get, server.Token);
 
             var comments = notes
                 .Where(n => !n.System)
@@ -122,7 +109,7 @@ public class IssueProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch comments for issue #{IssueId}", issue.Iid);
+            logger.LogWarning(ex, "Failed to fetch comments for issue #{IssueId}", issue.Iid);
             return string.Empty;
         }
     }
@@ -139,12 +126,12 @@ public class IssueProcessor
         try
         {
             var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/issues/{issue.Iid}";
-            var issueDetails = await _httpWrapper.SendHttpAndGetJson<GitLabIssueDto>(url, HttpMethod.Get, server.Token);
+            var issueDetails = await httpWrapper.SendHttpAndGetJson<GitLabIssueDto>(url, HttpMethod.Get, server.Token);
             return string.Equals(issueDetails.State, "opened", StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to check if issue #{IssueId} is still open. Assuming it is.", issue.Iid);
+            logger.LogWarning(ex, "Failed to check if issue #{IssueId} is still open. Assuming it is.", issue.Iid);
             return true;
         }
     }
@@ -168,7 +155,7 @@ public class IssueProcessor
         var repoName = repository.Name ?? throw new InvalidOperationException("Repository name is null");
         var defaultBranch = repository.DefaultBranch ?? throw new InvalidOperationException("Repository default branch is null");
 
-        var existingPullRequestsByBot = (await _versionControl.GetPullRequests(
+        var existingPullRequestsByBot = (await versionControl.GetPullRequests(
                 server.EndPoint,
                 ownerLogin,
                 repoName,
@@ -178,7 +165,7 @@ public class IssueProcessor
 
         if (existingPullRequestsByBot.All(p => p.State != "open"))
         {
-            _logger.LogInformation("Creating pull request for issue #{IssueId}...", issue.Iid);
+            logger.LogInformation("Creating pull request for issue #{IssueId}...", issue.Iid);
 
             var title = $"Fix for issue #{issue.Iid}: {issue.Title}";
             var body = $@"
@@ -203,7 +190,7 @@ Please review carefully before merging.";
 
             try
             {
-                await _versionControl.CreatePullRequest(
+                await versionControl.CreatePullRequest(
                     server.EndPoint,
                     ownerLogin,
                     repoName,
@@ -217,7 +204,7 @@ Please review carefully before merging.";
             {
                 // If the fork is too old or detached, GitLab returns 422 Unprocessable Entity ("Source project is not a fork of the target project").
                 // We directly delete the remote forked project here, so it can be re-forked and retried in the next run.
-                _logger.LogWarning(ex, "Failed to create pull request for issue #{IssueId}. The fork might be too old or detached. Deleting the remote fork...", issue.Iid);
+                logger.LogWarning(ex, "Failed to create pull request for issue #{IssueId}. The fork might be too old or detached. Deleting the remote fork...", issue.Iid);
 
                 if (server.Provider == "GitLab")
                 {
@@ -225,12 +212,12 @@ Please review carefully before merging.";
                     {
                         var projectPath = Uri.EscapeDataString($"{server.UserName}/{repoName}");
                         var deleteUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{projectPath}";
-                        await _httpWrapper.SendHttpAndGetJson<object>(deleteUrl, HttpMethod.Delete, server.Token);
-                        _logger.LogInformation("Successfully deleted the remote fork: {ProjectPath}", projectPath);
+                        await httpWrapper.SendHttpAndGetJson<object>(deleteUrl, HttpMethod.Delete, server.Token);
+                        logger.LogInformation("Successfully deleted the remote fork: {ProjectPath}", projectPath);
                     }
                     catch (Exception deleteEx)
                     {
-                        _logger.LogError(deleteEx, "Failed to delete the remote fork after pull request creation failed.");
+                        logger.LogError(deleteEx, "Failed to delete the remote fork after pull request creation failed.");
                     }
                 }
 
@@ -249,22 +236,22 @@ Please review carefully before merging.";
         try
         {
             var userUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/user";
-            var user = await _httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
+            var user = await httpWrapper.SendHttpAndGetJson<GitLabUser>(userUrl, HttpMethod.Get, server.Token);
 
             var mrUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/merge_requests?state=opened&source_branch={branchName}";
-            var mrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
+            var mrs = await httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(mrUrl, HttpMethod.Get, server.Token);
             var mr = mrs.FirstOrDefault();
 
             if (mr != null)
             {
                 var updateUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{issue.ProjectId}/merge_requests/{mr.Iid}?assignee_id={user.Id}";
-                await _httpWrapper.SendHttpAndGetJson<object>(updateUrl, HttpMethod.Put, server.Token);
-                _logger.LogInformation("Assigned MR #{IID} to bot user {UserName}", mr.Iid, server.UserName);
+                await httpWrapper.SendHttpAndGetJson<object>(updateUrl, HttpMethod.Put, server.Token);
+                logger.LogInformation("Assigned MR #{IID} to bot user {UserName}", mr.Iid, server.UserName);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to assign MR to bot for issue #{IssueId}", issue.Iid);
+            logger.LogError(ex, "Failed to assign MR to bot for issue #{IssueId}", issue.Iid);
         }
     }
 }

@@ -12,33 +12,18 @@ namespace Aiursoft.GeminiBot.Services;
 /// <summary>
 /// Handles reviewing merge requests where the bot is assigned as a reviewer.
 /// </summary>
-public class MergeRequestReviewerProcessor
+public class MergeRequestReviewerProcessor(
+    IVersionControlService versionControl,
+    BotWorkflowEngine workflowEngine,
+    HttpWrapper httpWrapper,
+    IHttpClientFactory httpClientFactory,
+    ILogger<MergeRequestReviewerProcessor> logger)
 {
-    private readonly IVersionControlService _versionControl;
-    private readonly BotWorkflowEngine _workflowEngine;
-    private readonly HttpWrapper _httpWrapper;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<MergeRequestReviewerProcessor> _logger;
-
-    public MergeRequestReviewerProcessor(
-        IVersionControlService versionControl,
-        BotWorkflowEngine workflowEngine,
-        HttpWrapper httpWrapper,
-        IHttpClientFactory httpClientFactory,
-        ILogger<MergeRequestReviewerProcessor> logger)
-    {
-        _versionControl = versionControl;
-        _workflowEngine = workflowEngine;
-        _httpWrapper = httpWrapper;
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-    }
-
     public async Task<ProcessResult> ProcessReviewRequestsAsync(Server server)
     {
         if (server.Provider != "GitLab")
         {
-            _logger.LogInformation("Reviewing is currently only supported for GitLab. Skipping server {EndPoint}", server.EndPoint);
+            logger.LogInformation("Reviewing is currently only supported for GitLab. Skipping server {EndPoint}", server.EndPoint);
             return ProcessResult.Succeeded("Skipped non-GitLab server");
         }
 
@@ -47,11 +32,11 @@ public class MergeRequestReviewerProcessor
             var mrsToReview = await IdentifyMergeRequestsToReviewAsync(server);
             if (mrsToReview.Count == 0)
             {
-                _logger.LogInformation("No merge requests need review. All clear!");
+                logger.LogInformation("No merge requests need review. All clear!");
                 return ProcessResult.Succeeded("No MRs to review");
             }
 
-            _logger.LogInformation("Found {Count} merge requests to review", mrsToReview.Count);
+            logger.LogInformation("Found {Count} merge requests to review", mrsToReview.Count);
 
             foreach (var item in mrsToReview)
             {
@@ -62,26 +47,26 @@ public class MergeRequestReviewerProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reviewing merge requests");
+            logger.LogError(ex, "Error reviewing merge requests");
             return ProcessResult.Failed("Error reviewing merge requests", ex);
         }
     }
 
     private async Task<List<MRToProcess>> IdentifyMergeRequestsToReviewAsync(Server server)
     {
-        _logger.LogInformation("Checking merge requests where {UserName} is a reviewer on {EndPoint}...", server.UserName, server.EndPoint);
+        logger.LogInformation("Checking merge requests where {UserName} is a reviewer on {EndPoint}...", server.UserName, server.EndPoint);
 
         // GitLab API to find MRs where I am a reviewer
         // Using scope=reviews_for_me which is the recommended way to get MRs where the authenticated user is a reviewer
         var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/merge_requests?scope=reviews_for_me&state=opened&per_page=100";
-        _logger.LogInformation("Fetching MRs from URL: {Url}", url);
-        var gitLabMrs = await _httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
-        _logger.LogInformation("Found {Count} MRs from API response", gitLabMrs.Count);
+        logger.LogInformation("Fetching MRs from URL: {Url}", url);
+        var gitLabMrs = await httpWrapper.SendHttpAndGetJson<List<GitLabMergeRequestDto>>(url, HttpMethod.Get, server.Token);
+        logger.LogInformation("Found {Count} MRs from API response", gitLabMrs.Count);
 
         var mrsToReview = new List<MRToProcess>();
         foreach (var mrDto in gitLabMrs)
         {
-            _logger.LogInformation("Analyzing MR #{IID} for review: {Title} on {EndPoint} (Project ID: {ProjectId})...",
+            logger.LogInformation("Analyzing MR #{IID} for review: {Title} on {EndPoint} (Project ID: {ProjectId})...",
                 mrDto.Iid, mrDto.Title, server.EndPoint, mrDto.ProjectId);
 
             var mrSearchResult = new MergeRequestSearchResult
@@ -97,8 +82,8 @@ public class MergeRequestReviewerProcessor
 
             if (needsReview)
             {
-                _logger.LogInformation("MR #{IID} needs review.", mrDto.Iid);
-                var details = await _versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mrDto.ProjectId, mrDto.Iid);
+                logger.LogInformation("MR #{IID} needs review.", mrDto.Iid);
+                var details = await versionControl.GetMergeRequestDetails(server.EndPoint, server.UserName, server.Token, mrDto.ProjectId, mrDto.Iid);
 
                 mrsToReview.Add(new MRToProcess
                 {
@@ -112,7 +97,7 @@ public class MergeRequestReviewerProcessor
             }
             else
             {
-                _logger.LogInformation("MR #{IID} does not need review. Skipping.", mrDto.Iid);
+                logger.LogInformation("MR #{IID} does not need review. Skipping.", mrDto.Iid);
             }
         }
         return mrsToReview;
@@ -124,12 +109,12 @@ public class MergeRequestReviewerProcessor
         {
             // Get last commit time
             var commitsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/commits";
-            var commits = await _httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
+            var commits = await httpWrapper.SendHttpAndGetJson<List<GitLabCommit>>(commitsUrl, HttpMethod.Get, server.Token);
             var lastCommitTime = commits.Select(c => c.Created_at).DefaultIfEmpty(DateTime.MinValue).Max();
 
             // Get discussions to find last bot review
             var discussionsUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{mr.ProjectId}/merge_requests/{mr.IID}/discussions";
-            var discussions = await _httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
+            var discussions = await httpWrapper.SendHttpAndGetJson<List<GitLabDiscussion>>(discussionsUrl, HttpMethod.Get, server.Token);
 
             var sb = new StringBuilder();
             var lastBotReviewTime = DateTime.MinValue;
@@ -150,7 +135,7 @@ public class MergeRequestReviewerProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch review details for MR #{IID}", mr.IID);
+            logger.LogWarning(ex, "Failed to fetch review details for MR #{IID}", mr.IID);
             return (false, string.Empty, DateTime.MinValue);
         }
     }
@@ -160,7 +145,7 @@ public class MergeRequestReviewerProcessor
         var mr = item.SearchResult;
         try
         {
-            _logger.LogInformation("Reviewing MR #{IID}: {Title}", mr.IID, mr.Title);
+            logger.LogInformation("Reviewing MR #{IID}: {Title}", mr.IID, mr.Title);
             var pipelineProjectId = mr.SourceProjectId > 0 ? mr.SourceProjectId : mr.ProjectId;
             var branchName = mr.SourceBranch ?? throw new InvalidOperationException($"MR #{mr.IID} has no source branch");
 
@@ -182,7 +167,7 @@ public class MergeRequestReviewerProcessor
             };
 
             // We use the engine to clone and run Gemini, but we override the finalization
-            await _workflowEngine.ExecuteAsync(context, async ctx =>
+            await workflowEngine.ExecuteAsync(context, async ctx =>
             {
                 var reviewFilePath = Path.Combine(ctx.WorkspacePath, "review.md");
                 if (File.Exists(reviewFilePath))
@@ -194,18 +179,18 @@ public class MergeRequestReviewerProcessor
                     }
                     else
                     {
-                        _logger.LogWarning("Gemini generated an empty review.md for MR #{IID}", mr.IID);
+                        logger.LogWarning("Gemini generated an empty review.md for MR #{IID}", mr.IID);
                     }
                 }
                 else
                 {
-                    _logger.LogWarning("Gemini did not generate a review.md for MR #{IID}", mr.IID);
+                    logger.LogWarning("Gemini did not generate a review.md for MR #{IID}", mr.IID);
                 }
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reviewing MR #{IID}", mr.IID);
+            logger.LogError(ex, "Error reviewing MR #{IID}", mr.IID);
         }
     }
 
@@ -231,10 +216,10 @@ Please write your review into 'review.md' now.";
 
     private async Task PostReviewCommentAsync(Server server, int projectId, int mrIid, string content)
     {
-        _logger.LogInformation("Posting review comment to MR #{IID}...", mrIid);
+        logger.LogInformation("Posting review comment to MR #{IID}...", mrIid);
         var url = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{projectId}/merge_requests/{mrIid}/notes";
 
-        using var client = _httpClientFactory.CreateClient();
+        using var client = httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", server.Token);
         var response = await client.PostAsJsonAsync(url, new { body = content });
         response.EnsureSuccessStatusCode();

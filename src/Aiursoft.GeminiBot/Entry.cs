@@ -10,41 +10,24 @@ namespace Aiursoft.GeminiBot;
 /// Application entry point and coordinator.
 /// Orchestrates the high-level workflow without containing business logic.
 /// </summary>
-public class Entry
+public class Entry(
+    IOptions<List<Server>> servers,
+    IEnumerable<IVersionControlService> versionControls,
+    IssueProcessor issueProcessor,
+    MergeRequestProcessor mergeRequestProcessor,
+    MergeRequestReviewerProcessor mergeRequestReviewerProcessor,
+    PipelineProcessor pipelineProcessor,
+    ILogger<Entry> logger)
 {
-    private readonly List<Server> _servers;
-    private readonly IEnumerable<IVersionControlService> _versionControls;
-    private readonly IssueProcessor _issueProcessor;
-    private readonly MergeRequestProcessor _mergeRequestProcessor;
-    private readonly MergeRequestReviewerProcessor _mergeRequestReviewerProcessor;
-    private readonly PipelineProcessor _pipelineProcessor;
-    private readonly ILogger<Entry> _logger;
-
-    public Entry(
-        IOptions<List<Server>> servers,
-        IEnumerable<IVersionControlService> versionControls,
-        IssueProcessor issueProcessor,
-        MergeRequestProcessor mergeRequestProcessor,
-        MergeRequestReviewerProcessor mergeRequestReviewerProcessor,
-        PipelineProcessor pipelineProcessor,
-        ILogger<Entry> logger)
-    {
-        _servers = servers.Value;
-        _versionControls = versionControls;
-        _issueProcessor = issueProcessor;
-        _mergeRequestProcessor = mergeRequestProcessor;
-        _mergeRequestReviewerProcessor = mergeRequestReviewerProcessor;
-        _pipelineProcessor = pipelineProcessor;
-        _logger = logger;
-    }
+    private readonly List<Server> _servers = servers.Value;
 
     public async Task RunAsync()
     {
-        _logger.LogInformation("Starting Gemini Bot for issue processing...");
+        logger.LogInformation("Starting Gemini Bot for issue processing...");
 
         foreach (var server in _servers)
         {
-            _logger.LogInformation("Processing server: {ServerProvider}...", server.Provider);
+            logger.LogInformation("Processing server: {ServerProvider}...", server.Provider);
 
             var serviceProvider = GetVersionControlService(server.Provider);
             await ProcessServerAsync(server, serviceProvider);
@@ -53,7 +36,7 @@ public class Entry
 
     private IVersionControlService GetVersionControlService(string providerName)
     {
-        var service = _versionControls.FirstOrDefault(v => v.GetName() == providerName);
+        var service = versionControls.FirstOrDefault(v => v.GetName() == providerName);
         if (service == null)
         {
             throw new InvalidOperationException($"No version control service found for provider: {providerName}");
@@ -64,25 +47,25 @@ public class Entry
     private async Task ProcessServerAsync(Server server, IVersionControlService versionControl)
     {
         // PRIORITY 1: Check starred projects' pipelines
-        _logger.LogInformation("\n\n================ CHECKING STARRED PROJECTS PIPELINES ================\n");
+        logger.LogInformation("\n\n================ CHECKING STARRED PROJECTS PIPELINES ================\n");
         try
         {
-            await _pipelineProcessor.ProcessStarredProjectsAsync(server);
+            await pipelineProcessor.ProcessStarredProjectsAsync(server);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking pipelines for {UserName}", server.UserName);
+            logger.LogError(ex, "Error checking pipelines for {UserName}", server.UserName);
         }
 
-        _logger.LogInformation("\n\n================ CHECKING ISSUES ================\n");
+        logger.LogInformation("\n\n================ CHECKING ISSUES ================\n");
 
         // PRIORITY 2: Process assigned issues
         var assignedIssues = await versionControl
             .GetAssignedIssues(server.EndPoint, server.UserName, server.Token)
             .ToListAsync();
 
-        _logger.LogInformation("Got {IssuesCount} issues assigned to {UserName}", assignedIssues.Count, server.UserName);
-        _logger.LogInformation("\n\n================================================================\n\n");
+        logger.LogInformation("Got {IssuesCount} issues assigned to {UserName}", assignedIssues.Count, server.UserName);
+        logger.LogInformation("\n\n================================================================\n\n");
 
         foreach (var issue in assignedIssues)
         {
@@ -90,27 +73,27 @@ public class Entry
         }
 
         // PRIORITY 3: Check and fix failed merge requests
-        _logger.LogInformation("\n\n================ CHECKING MERGE REQUESTS ================\n");
-        _logger.LogInformation("Checking merge requests before processing issues...");
+        logger.LogInformation("\n\n================ CHECKING MERGE REQUESTS ================\n");
+        logger.LogInformation("Checking merge requests before processing issues...");
 
         try
         {
-            await _mergeRequestProcessor.ProcessMergeRequestsAsync(server);
+            await mergeRequestProcessor.ProcessMergeRequestsAsync(server);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking merge requests for {UserName}", server.UserName);
+            logger.LogError(ex, "Error checking merge requests for {UserName}", server.UserName);
         }
 
         // PRIORITY 4: Review merge requests assigned to bot
-        _logger.LogInformation("\n\n================ CHECKING REVIEWS ================\n");
+        logger.LogInformation("\n\n================ CHECKING REVIEWS ================\n");
         try
         {
-            await _mergeRequestReviewerProcessor.ProcessReviewRequestsAsync(server);
+            await mergeRequestReviewerProcessor.ProcessReviewRequestsAsync(server);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reviewing merge requests for {UserName}", server.UserName);
+            logger.LogError(ex, "Error reviewing merge requests for {UserName}", server.UserName);
         }
     }
 
@@ -118,30 +101,30 @@ public class Entry
     {
         try
         {
-            _logger.LogInformation("Processing issue: {Issue}...", issue);
+            logger.LogInformation("Processing issue: {Issue}...", issue);
 
-            var result = await _issueProcessor.ProcessAsync(issue, server);
+            var result = await issueProcessor.ProcessAsync(issue, server);
 
             if (result.Success)
             {
-                _logger.LogInformation("Issue #{IssueId} processed: {Message}", issue.Iid, result.Message);
+                logger.LogInformation("Issue #{IssueId} processed: {Message}", issue.Iid, result.Message);
             }
             else
             {
-                _logger.LogWarning("Issue #{IssueId} processing failed: {Message}", issue.Iid, result.Message);
+                logger.LogWarning("Issue #{IssueId} processing failed: {Message}", issue.Iid, result.Message);
                 if (result.Error != null)
                 {
-                    _logger.LogError(result.Error, "Exception details for issue #{IssueId}", issue.Iid);
+                    logger.LogError(result.Error, "Exception details for issue #{IssueId}", issue.Iid);
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception when processing issue: {Issue}", issue);
+            logger.LogError(ex, "Unhandled exception when processing issue: {Issue}", issue);
         }
         finally
         {
-            _logger.LogInformation("\n\n================================================================\n\n");
+            logger.LogInformation("\n\n================================================================\n\n");
         }
     }
 }
