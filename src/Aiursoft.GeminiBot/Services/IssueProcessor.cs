@@ -67,7 +67,28 @@ public class IssueProcessor(
             {
                 await workflowEngine.EnsureRepositoryForkedAsync(server, ctx.Repository!);
                 var pushPath = versionControl.GetPushPath(server, ctx.Repository!);
-                await workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
+                try
+                {
+                    await workflowEngine.PushAndFinalizeAsync(ctx, pushPath);
+                }
+                catch (Exception ex) when (server.Provider == "GitLab")
+                {
+                    var repoName = ctx.Repository!.Name ?? throw new InvalidOperationException("Repository name is null");
+                    logger.LogWarning(ex, "Push failed for issue #{IssueId}. Deleting broken fork {UserName}/{RepoName} so it will be re-forked on next cycle.",
+                        issue.Iid, server.UserName, repoName);
+                    try
+                    {
+                        var projectPath = Uri.EscapeDataString($"{server.UserName}/{repoName}");
+                        var deleteUrl = $"{server.EndPoint.TrimEnd('/')}/api/v4/projects/{projectPath}";
+                        await httpWrapper.SendHttpAndGetJson<object>(deleteUrl, HttpMethod.Delete, server.Token);
+                        logger.LogInformation("Successfully deleted broken fork: {UserName}/{RepoName}", server.UserName, repoName);
+                    }
+                    catch (Exception deleteEx)
+                    {
+                        logger.LogError(deleteEx, "Failed to delete broken fork {UserName}/{RepoName}", server.UserName, repoName);
+                    }
+                    throw;
+                }
 
                 if (await IsIssueOpenAsync(server, issue))
                 {
